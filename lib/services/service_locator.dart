@@ -4,6 +4,7 @@ import 'package:going50/obd_lib/obd_service.dart';
 import 'package:going50/sensor_lib/sensor_service.dart';
 import 'package:going50/data_lib/data_storage_manager.dart';
 import 'package:going50/behavior_classifier_lib/managers/eco_driving_manager.dart';
+import 'package:going50/services/driving/obd_connection_service.dart';
 import 'package:logging/logging.dart';
 
 /// Global instance of the service locator
@@ -17,7 +18,8 @@ Future<void> setupServiceLocator() async {
   // Register existing libraries as singletons
   _registerExistingLibraries();
   
-  // Register services (will be implemented in future days)
+  // Register services
+  _registerServices();
   
   // Setup is complete
   debugPrint('Service locator initialized successfully');
@@ -74,4 +76,14 @@ void _registerExistingLibraries() {
   serviceLocator.registerLazySingleton<EcoDrivingManager>(
     () => EcoDrivingManager(),
   );
+}
+
+/// Register application services
+void _registerServices() {
+  // Register OBD Connection Service
+  serviceLocator.registerLazySingleton<ObdConnectionService>(
+    () => ObdConnectionService(serviceLocator<ObdService>()),
+  );
+  
+  // Additional services will be registered here as they are implemented
 } 
