@@ -6,6 +6,7 @@ import 'package:going50/data_lib/data_storage_manager.dart';
 import 'package:going50/behavior_classifier_lib/managers/eco_driving_manager.dart';
 import 'package:going50/services/driving/obd_connection_service.dart';
 import 'package:going50/services/driving/sensor_service.dart';
+import 'package:going50/services/driving/data_collection_service.dart';
 import 'package:logging/logging.dart';
 
 /// Global instance of the service locator
@@ -91,6 +92,15 @@ void _registerServices() {
     () => ObdConnectionService(
       serviceLocator<ObdService>(),
       sensorService: serviceLocator<SensorService>(),
+    ),
+  );
+  
+  // Register Data Collection Service
+  serviceLocator.registerLazySingleton<DataCollectionService>(
+    () => DataCollectionService(
+      serviceLocator<ObdConnectionService>(),
+      serviceLocator<SensorService>(),
+      serviceLocator<EcoDrivingManager>(),
     ),
   );
   
