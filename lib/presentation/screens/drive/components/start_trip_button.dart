@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:going50/core/theme/app_colors.dart';
+import 'package:going50/core/constants/route_constants.dart';
 import 'package:going50/presentation/providers/driving_provider.dart';
 import 'package:going50/services/driving/driving_service.dart';
 
@@ -34,13 +35,17 @@ class StartTripButton extends StatelessWidget {
     // Handle button press
     void onPressed() async {
       if (!isEnabled) {
-        // Show a snackbar with explanation if button is disabled
+        // If a trip is already in progress, navigate to active drive screen
+        if (isRecording) {
+          Navigator.of(context).pushNamed(DriveRoutes.activeDrive);
+          return;
+        }
+        
+        // Otherwise show a snackbar with explanation if button is disabled
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isRecording 
-              ? 'Trip already in progress. Go to the active driving screen.' 
-              : 'Cannot start trip. Please check connection status.'),
-            duration: const Duration(seconds: 3),
+          const SnackBar(
+            content: Text('Cannot start trip. Please check connection status.'),
+            duration: Duration(seconds: 3),
           ),
         );
         return;
@@ -54,7 +59,10 @@ class StartTripButton extends StatelessWidget {
       // Start the trip
       final success = await drivingProvider.startTrip();
       
-      if (!success && context.mounted) {
+      if (success && context.mounted) {
+        // Navigate to active drive screen when trip starts successfully
+        Navigator.of(context).pushNamed(DriveRoutes.activeDrive);
+      } else if (!success && context.mounted) {
         // Show error snackbar if trip start failed
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

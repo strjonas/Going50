@@ -5,6 +5,7 @@ import '../presentation/screens/onboarding/welcome_screen.dart';
 import '../presentation/screens/onboarding/value_carousel_screen.dart';
 import '../presentation/screens/onboarding/account_choice_screen.dart';
 import '../presentation/screens/onboarding/connection_setup_screen.dart';
+import '../presentation/screens/drive/active_drive_screen.dart';
 
 /// AppRouter handles route management for the application.
 /// 
@@ -18,9 +19,7 @@ class AppRouter {
       // Drive routes
       case DriveRoutes.activeDrive:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Active Drive Screen - To be implemented')),
-          ),
+          builder: (_) => const ActiveDriveScreen(),
         );
         
       case DriveRoutes.tripSummary:
