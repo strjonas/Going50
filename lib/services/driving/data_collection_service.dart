@@ -6,8 +6,6 @@ import 'package:going50/core_models/obd_II_data.dart';
 import 'package:going50/core_models/phone_sensor_data.dart';
 import 'package:going50/services/driving/obd_connection_service.dart';
 import 'package:going50/services/driving/sensor_service.dart';
-import 'package:going50/services/driving/analytics_service.dart';
-import 'package:going50/services/driving/trip_service.dart';
 import 'package:logging/logging.dart';
 
 /// A service that coordinates collection of driving data from OBD and sensors.
@@ -24,8 +22,6 @@ class DataCollectionService extends ChangeNotifier {
   final ObdConnectionService _obdConnectionService;
   final SensorService _sensorService;
   final EcoDrivingManager _ecoDrivingManager;
-  AnalyticsService? _analyticsService; // Optional dependency
-  TripService? _tripService; // Optional dependency
   
   // Service state
   bool _isInitialized = false;
@@ -77,18 +73,6 @@ class DataCollectionService extends ChangeNotifier {
     });
   }
   
-  /// Set the analytics service
-  void setAnalyticsService(AnalyticsService analyticsService) {
-    _analyticsService = analyticsService;
-    _logger.info('Analytics service registered with data collection service');
-  }
-  
-  /// Set the trip service
-  void setTripService(TripService tripService) {
-    _tripService = tripService;
-    _logger.info('Trip service registered with data collection service');
-  }
-  
   /// Initialize the data collection service
   Future<bool> initialize() async {
     if (_isInitialized) return true;
@@ -96,39 +80,38 @@ class DataCollectionService extends ChangeNotifier {
     _logger.info('Initializing data collection service');
     
     try {
-      // Initialize sensor service
-      final sensorInitialized = await _sensorService.initialize();
-      if (!sensorInitialized) {
-        _setErrorMessage('Failed to initialize sensor service');
-        return false;
+      // Initialize OBD connection service if not already done
+      if (!_obdConnectionService.isInitialized) {
+        final obdInitialized = await _obdConnectionService.initialize();
+        if (!obdInitialized) {
+          _setErrorMessage('Failed to initialize OBD connection service');
+          return false;
+        }
       }
       
-      // Try to initialize OBD service, but don't fail if it doesn't work
-      // This allows the app to work with just sensors
-      try {
-        await _obdConnectionService.initialize();
-      } catch (e) {
-        _logger.warning('OBD initialization failed, will use sensor fallback: $e');
-        _useFallbackMode = true;
-      }
-      
-      // Initialize trip service if available
-      if (_tripService != null) {
-        await _tripService!.initialize();
+      // Initialize sensor service if not already done
+      if (!_sensorService.isInitialized) {
+        final sensorInitialized = await _sensorService.initialize();
+        if (!sensorInitialized) {
+          _setErrorMessage('Failed to initialize sensor service');
+          return false;
+        }
       }
       
       _isInitialized = true;
       _clearErrorMessage();
       notifyListeners();
+      
+      _logger.info('Data collection service initialized successfully');
       return true;
     } catch (e) {
-      _setErrorMessage('Failed to initialize: $e');
-      _logger.severe('Initialization error: $e');
+      _setErrorMessage('Error initializing data collection service: $e');
+      _logger.severe('Error initializing data collection service', e);
       return false;
     }
   }
   
-  /// Start collecting driving data
+  /// Starts data collection
   Future<bool> startCollection() async {
     if (!_isInitialized) {
       final initialized = await initialize();
@@ -147,80 +130,79 @@ class DataCollectionService extends ChangeNotifier {
         return false;
       }
       
-      // Try to use OBD if available and not in fallback mode
-      if (!_useFallbackMode) {
-        // Check if OBD is connected
-        if (!_obdConnectionService.isConnected) {
-          _logger.info('OBD not connected, switching to sensor fallback mode');
-          _useFallbackMode = true;
-        } else {
-          _logger.info('Using OBD for data collection');
+      // Try to start OBD collection, but don't fail if it doesn't work
+      bool obdStarted = false;
+      if (_obdConnectionService.isConnected) {
+        try {
+          await _obdConnectionService.startContinuousQueries();
+          obdStarted = true;
+        } catch (e) {
+          _logger.warning('Failed to start OBD queries: $e');
         }
+      }
+      _useFallbackMode = !obdStarted;
+      
+      if (!obdStarted) {
+        _logger.warning('OBD data collection failed, using sensor fallback mode');
       }
       
       // Set up data processing timer
-      _processingTimer = Timer.periodic(
-        const Duration(milliseconds: 100), 
-        (_) => _processBufferedData()
-      );
+      _setupProcessingTimer();
       
       // Set up background collection timer
-      _backgroundCollectionTimer = Timer.periodic(
-        const Duration(milliseconds: _backgroundCollectionIntervalMs),
-        (_) => _collectDataPoint()
-      );
-      
-      // Initialize analytics if available
-      if (_analyticsService != null) {
-        await _analyticsService!.initialize();
-      }
-      
-      // Start a new trip if we have a trip service
-      if (_tripService != null && !_tripService!.isOnTrip) {
-        await _tripService!.startTrip();
-        _logger.info('Started a new trip via TripService');
-      }
+      _setupBackgroundCollectionTimer();
       
       _isCollecting = true;
-      _clearErrorMessage();
       notifyListeners();
+      
+      _logger.info('Data collection started successfully');
       return true;
     } catch (e) {
-      _setErrorMessage('Failed to start collection: $e');
-      _logger.severe('Collection start error: $e');
+      _setErrorMessage('Error starting data collection: $e');
+      _logger.severe('Error starting data collection', e);
       return false;
     }
   }
   
-  /// Stop collecting driving data
-  Future<void> stopCollection() async {
-    if (!_isCollecting) return;
+  /// Stops data collection
+  Future<bool> stopCollection() async {
+    if (!_isCollecting) return true;
     
     _logger.info('Stopping data collection');
     
-    // Stop sensor collection
-    _sensorService.stopCollection();
-    
-    // Cancel timers
-    _processingTimer?.cancel();
-    _processingTimer = null;
-    
-    _backgroundCollectionTimer?.cancel();
-    _backgroundCollectionTimer = null;
-    
-    // Stop analytics if available
-    if (_analyticsService != null) {
-      _analyticsService!.stopAnalysis();
+    try {
+      // Stop timers
+      _processingTimer?.cancel();
+      _processingTimer = null;
+      
+      _backgroundCollectionTimer?.cancel();
+      _backgroundCollectionTimer = null;
+      
+      // Stop sensor collection
+      _sensorService.stopCollection();
+      
+      // Stop OBD collection if connected
+      if (_obdConnectionService.isConnected) {
+        try {
+          await _obdConnectionService.stopQueries();
+        } catch (e) {
+          _logger.warning('Failed to stop OBD queries: $e');
+        }
+      }
+      
+      // Clear buffer
+      _dataBuffer.clear();
+      
+      _isCollecting = false;
+      notifyListeners();
+      
+      _logger.info('Data collection stopped successfully');
+      return true;
+    } catch (e) {
+      _setErrorMessage('Error stopping data collection: $e');
+      _logger.severe('Error stopping data collection', e);
+      return false;
     }
-    
-    // End the current trip if we have a trip service
-    if (_tripService != null && _tripService!.isOnTrip) {
-      await _tripService!.endTrip();
-      _logger.info('Ended current trip via TripService');
-    }
-    
-    _isCollecting = false;
-    notifyListeners();
   }
   
   /// Clear the data buffer
@@ -265,36 +247,37 @@ class DataCollectionService extends ChangeNotifier {
     _createCombinedDataPoint(latestObdData, sensorData);
   }
   
-  /// Create a combined data point and add it to the processing queue
-  void _createCombinedDataPoint(OBDIIData? obdData, PhoneSensorData sensorData) {
-    // Create the combined data point
-    final combinedData = CombinedDrivingData.combine(
-      timestamp: DateTime.now(),
-      obdData: obdData,
-      sensorData: sensorData,
-    );
+  /// Process the latest data
+  void _processData() {
+    if (!_isCollecting) return;
     
-    // Add to buffer
-    _addToDataBuffer(combinedData);
-    
-    // Process immediately
-    _dataStreamController.add(combinedData);
-    _ecoDrivingManager.addDataPoint(combinedData);
-    
-    // Send to trip service if available and on a trip
-    if (_tripService != null && _tripService!.isOnTrip) {
-      _tripService!.processDataPoint(combinedData);
-    }
-    
-    // Trigger analytics if available
-    if (_analyticsService != null && _isCollecting) {
-      _analyticsService!.triggerAnalysis();
+    try {
+      // Create a combined data point
+      final obdData = _obdConnectionService.isConnected ? _obdConnectionService.getLatestOBDData() : null;
+      final sensorData = _sensorService.latestSensorData;
+      
+      if (sensorData == null) {
+        _logger.warning('No sensor data available for processing');
+        return;
+      }
+      
+      final combinedData = _createCombinedDataPoint(obdData, sensorData);
+      
+      // Add to buffer
+      _addToDataBuffer(combinedData);
+      
+      // Emit data point
+      _dataStreamController.add(combinedData);
+      
+      // Add data point to eco driving manager
+      _ecoDrivingManager.addDataPoint(combinedData);
+    } catch (e) {
+      _logger.warning('Error processing data: $e');
     }
   }
   
-  /// Actively collect a data point regardless of individual data streams
-  /// Used for background collection to ensure continuous data flow
-  Future<void> _collectDataPoint() async {
+  /// Collect background data
+  Future<void> _collectBackgroundData() async {
     if (!_isCollecting) return;
     
     try {
@@ -309,32 +292,44 @@ class DataCollectionService extends ChangeNotifier {
       }
       
       // Create combined data point
-      final combinedData = CombinedDrivingData.combine(
-        timestamp: DateTime.now(),
-        obdData: obdData,
-        sensorData: sensorData,
-      );
+      final combinedData = _createCombinedDataPoint(obdData, sensorData);
       
       // Add to buffer
       _addToDataBuffer(combinedData);
       
-      // Process data
-      _dataStreamController.add(combinedData);
+      // Add data point to eco driving manager
       _ecoDrivingManager.addDataPoint(combinedData);
-      
-      // Send to trip service if available and on a trip
-      if (_tripService != null && _tripService!.isOnTrip) {
-        _tripService!.processDataPoint(combinedData);
-      }
-      
-      // Trigger analytics if available
-      if (_analyticsService != null) {
-        _analyticsService!.triggerAnalysis();
-      }
-      
     } catch (e) {
-      _logger.warning('Error collecting data point: $e');
+      _logger.warning('Error collecting background data: $e');
     }
+  }
+  
+  /// Create combined data point from OBD and sensor data
+  CombinedDrivingData _createCombinedDataPoint(OBDIIData? obdData, PhoneSensorData sensorData) {
+    // Create and return the combined data
+    return CombinedDrivingData.combine(
+      timestamp: DateTime.now(),
+      obdData: obdData,
+      sensorData: sensorData,
+    );
+  }
+  
+  /// Setup the timer for processing data
+  void _setupProcessingTimer() {
+    _processingTimer?.cancel();
+    _processingTimer = Timer.periodic(
+      const Duration(milliseconds: 200), 
+      (_) => _processData()
+    );
+  }
+  
+  /// Setup the timer for background collection (when app in background)
+  void _setupBackgroundCollectionTimer() {
+    _backgroundCollectionTimer?.cancel();
+    _backgroundCollectionTimer = Timer.periodic(
+      const Duration(milliseconds: _backgroundCollectionIntervalMs), 
+      (_) => _collectBackgroundData()
+    );
   }
   
   /// Enable fallback mode to use only sensor data
@@ -371,12 +366,6 @@ class DataCollectionService extends ChangeNotifier {
     while (_dataBuffer.length > _maxBufferSize) {
       _dataBuffer.removeAt(0);
     }
-  }
-  
-  /// Process any buffered data that hasn't been sent
-  void _processBufferedData() {
-    // This is a placeholder for potential future processing
-    // Currently data is processed immediately when received
   }
   
   /// Set error message

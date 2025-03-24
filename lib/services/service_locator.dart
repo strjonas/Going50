@@ -9,6 +9,7 @@ import 'package:going50/services/driving/sensor_service.dart';
 import 'package:going50/services/driving/data_collection_service.dart';
 import 'package:going50/services/driving/analytics_service.dart';
 import 'package:going50/services/driving/trip_service.dart';
+import 'package:going50/services/driving/driving_service.dart';
 import 'package:logging/logging.dart';
 
 /// Global instance of the service locator
@@ -24,9 +25,6 @@ Future<void> setupServiceLocator() async {
   
   // Register services
   _registerServices();
-  
-  // Connect services that need post-initialization setup
-  _connectServices();
   
   // Setup is complete
   debugPrint('Service locator initialized successfully');
@@ -122,18 +120,16 @@ void _registerServices() {
     ),
   );
   
-  // Additional services will be registered here as they are implemented
-}
-
-/// Connect services that need post-initialization setup
-void _connectServices() {
-  // Connect Analytics Service with Data Collection Service
-  serviceLocator<DataCollectionService>().setAnalyticsService(
-    serviceLocator<AnalyticsService>()
+  // Register Driving Service (main facade)
+  serviceLocator.registerLazySingleton<DrivingService>(
+    () => DrivingService(
+      serviceLocator<ObdConnectionService>(),
+      serviceLocator<SensorService>(),
+      serviceLocator<DataCollectionService>(),
+      serviceLocator<AnalyticsService>(),
+      serviceLocator<TripService>(),
+    ),
   );
   
-  // Connect Trip Service with Data Collection Service
-  serviceLocator<DataCollectionService>().setTripService(
-    serviceLocator<TripService>()
-  );
+  // Additional services will be registered here as they are implemented
 } 

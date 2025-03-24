@@ -245,6 +245,39 @@ class ObdConnectionService extends ChangeNotifier {
     }
   }
   
+  /// Start continuous queries to get OBD data
+  Future<bool> startContinuousQueries() async {
+    if (!_obdService.isConnected) {
+      _logger.warning('Cannot start continuous queries: No OBD device connected');
+      return false;
+    }
+    
+    try {
+      await _obdService.startContinuousQueries();
+      _logger.info('Continuous queries started successfully');
+      return true;
+    } catch (e) {
+      _setErrorMessage('Failed to start continuous queries: $e');
+      _logger.severe('Error starting continuous queries', e);
+      return false;
+    }
+  }
+  
+  /// Stop continuous queries
+  Future<bool> stopQueries() async {
+    if (!_obdService.isConnected) return true;
+    
+    try {
+      await _obdService.stopQueries();
+      _logger.info('Queries stopped successfully');
+      return true;
+    } catch (e) {
+      _setErrorMessage('Failed to stop queries: $e');
+      _logger.severe('Error stopping queries', e);
+      return false;
+    }
+  }
+  
   /// Get the latest OBD data
   OBDIIData? getLatestOBDData() {
     if (!_obdService.isConnected || _latestObdData.isEmpty) {
