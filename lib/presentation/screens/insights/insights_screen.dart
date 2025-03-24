@@ -6,6 +6,7 @@ import 'package:going50/presentation/screens/insights/components/time_period_sel
 import 'package:going50/presentation/screens/insights/components/eco_score_trend_chart.dart';
 import 'package:going50/presentation/screens/insights/components/savings_summary_card.dart';
 import 'package:going50/presentation/screens/insights/components/driving_behaviors_chart.dart';
+import 'package:going50/core/constants/route_constants.dart';
 
 /// InsightsScreen is the main screen for the Insights tab.
 ///
@@ -172,12 +173,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   Center(
                     child: OutlinedButton.icon(
                       onPressed: () {
-                        // TODO: Navigate to trip history screen
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Trip history not yet implemented'),
-                          ),
-                        );
+                        Navigator.of(context).pushNamed(InsightsRoutes.tripHistory);
                       },
                       icon: const Icon(Icons.history),
                       label: const Text('View Trip History'),
