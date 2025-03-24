@@ -1,10 +1,11 @@
 import 'package:get_it/get_it.dart';
 import 'package:flutter/foundation.dart';
 import 'package:going50/obd_lib/obd_service.dart';
-import 'package:going50/sensor_lib/sensor_service.dart';
+import 'package:going50/sensor_lib/sensor_service.dart' as sensor_lib;
 import 'package:going50/data_lib/data_storage_manager.dart';
 import 'package:going50/behavior_classifier_lib/managers/eco_driving_manager.dart';
 import 'package:going50/services/driving/obd_connection_service.dart';
+import 'package:going50/services/driving/sensor_service.dart';
 import 'package:logging/logging.dart';
 
 /// Global instance of the service locator
@@ -63,8 +64,8 @@ void _registerExistingLibraries() {
   );
   
   // Register Sensor service
-  serviceLocator.registerLazySingleton<SensorService>(
-    () => SensorService(isDebugMode: kDebugMode),
+  serviceLocator.registerLazySingleton<sensor_lib.SensorService>(
+    () => sensor_lib.SensorService(isDebugMode: kDebugMode),
   );
   
   // Register Data Storage manager
@@ -80,9 +81,17 @@ void _registerExistingLibraries() {
 
 /// Register application services
 void _registerServices() {
+  // Register Sensor Service
+  serviceLocator.registerLazySingleton<SensorService>(
+    () => SensorService(serviceLocator<sensor_lib.SensorService>()),
+  );
+  
   // Register OBD Connection Service
   serviceLocator.registerLazySingleton<ObdConnectionService>(
-    () => ObdConnectionService(serviceLocator<ObdService>()),
+    () => ObdConnectionService(
+      serviceLocator<ObdService>(),
+      sensorService: serviceLocator<SensorService>(),
+    ),
   );
   
   // Additional services will be registered here as they are implemented

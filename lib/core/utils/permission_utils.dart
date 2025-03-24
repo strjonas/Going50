@@ -117,4 +117,14 @@ class PermissionUtils {
     _logger.info('Opening app settings');
     return await openAppSettings();
   }
+  
+  /// Check if all required permissions for sensor use are granted
+  static Future<bool> checkSensorPermissions() async {
+    return checkSensorOnlyPermissions();
+  }
+  
+  /// Request all permissions needed for sensor use
+  static Future<bool> requestSensorPermissions() async {
+    return requestSensorOnlyPermissions();
+  }
 } 

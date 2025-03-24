@@ -147,4 +147,19 @@ class DeviceUtils {
       return false;
     }
   }
+  
+  /// Check if the device has all required sensors for collecting driving data
+  static Future<bool> hasSensorCapabilities() async {
+    try {
+      // Check for accelerometer and location services
+      final hasAccelerometer = await hasGyroscope(); // Using gyroscope check as a proxy for sensors
+      final hasLocation = await hasLocationServices();
+      
+      // Both are required for basic functionality
+      return hasAccelerometer && hasLocation;
+    } catch (e) {
+      _logger.warning('Error checking sensor capabilities: $e');
+      return false;
+    }
+  }
 } 
