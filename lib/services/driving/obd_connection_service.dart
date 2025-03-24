@@ -16,7 +16,6 @@ import 'package:going50/services/driving/sensor_service.dart';
 class ObdConnectionService extends ChangeNotifier {
   final Logger _logger = Logger('ObdConnectionService');
   final ObdService _obdService;
-  final SensorService? sensorService;
   
   // Connection state
   bool _isInitialized = false;
@@ -39,16 +38,12 @@ class ObdConnectionService extends ChangeNotifier {
   static const _dataStaleThresholdMs = 5000; // 5 seconds
   Timer? _staleDataTimer;
   
-  // Fallback mode
-  bool _fallbackModeActive = false;
-  
   // Public getters
   bool get isInitialized => _isInitialized;
   bool get isScanning => _isScanning;
   bool get isConnecting => _isConnecting;
   bool get isConnected => _obdService.isConnected;
   bool get isEngineRunning => _obdService.isEngineRunning;
-  bool get fallbackModeActive => _fallbackModeActive;
   String? get currentDeviceId => _currentDeviceId;
   String? get errorMessage => _errorMessage;
   
@@ -59,7 +54,7 @@ class ObdConnectionService extends ChangeNotifier {
   Stream<OBDIIData> get dataStream => _dataStreamController.stream;
   
   /// Constructor
-  ObdConnectionService(this._obdService, {this.sensorService}) {
+  ObdConnectionService(this._obdService) {
     _logger.info('ObdConnectionService initialized');
   }
   
@@ -406,150 +401,10 @@ class ObdConnectionService extends ChangeNotifier {
     _errorMessage = null;
   }
   
-  /// Switch to sensor-only fallback mode
-  Future<bool> switchToFallbackMode() async {
-    if (sensorService == null) {
-      _setErrorMessage('Sensor service not available for fallback mode');
-      return false;
-    }
-    
-    _logger.info('Switching to sensor-only fallback mode');
-    
-    try {
-      // Disconnect from OBD if connected
-      if (isConnected) {
-        await disconnect();
-      }
-      
-      // Initialize and start sensor service
-      final sensorInitialized = await sensorService!.initialize();
-      if (!sensorInitialized) {
-        _setErrorMessage('Failed to initialize sensor fallback');
-        return false;
-      }
-      
-      final sensorStarted = await sensorService!.startCollection();
-      if (!sensorStarted) {
-        _setErrorMessage('Failed to start sensor fallback collection');
-        return false;
-      }
-      
-      _fallbackModeActive = true;
-      _clearErrorMessage();
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _setErrorMessage('Error switching to fallback mode: $e');
-      _logger.severe('Fallback mode error: $e');
-      return false;
-    }
-  }
-  
-  /// Check connection status and switch to fallback if needed
-  Future<bool> ensureDataCollection() async {
-    // If already in fallback mode or connected, we're good
-    if (_fallbackModeActive || isConnected) {
-      return true;
-    }
-    
-    // Try to initialize and connect to OBD
-    final initialized = await initialize();
-    if (!initialized) {
-      _logger.info('OBD initialization failed, trying fallback mode');
-      return switchToFallbackMode();
-    }
-    
-    // Start scanning for devices
-    await startScan();
-    
-    // Wait a bit for devices to be discovered
-    await Future.delayed(const Duration(seconds: 3));
-    
-    // If no devices found or connection fails, switch to fallback
-    if (_deviceStreamController.hasListener) {
-      final devices = await _deviceStreamController.stream.first;
-      if (devices.isEmpty) {
-        _logger.info('No OBD devices found, switching to fallback mode');
-        return switchToFallbackMode();
-      }
-      
-      // Try to connect to the first device
-      final connected = await connectToDevice(devices.first.id);
-      if (!connected) {
-        _logger.info('OBD connection failed, switching to fallback mode');
-        return switchToFallbackMode();
-      }
-      
-      return true;
-    }
-    
-    // If we couldn't even scan properly, switch to fallback
-    _logger.info('OBD scanning failed, switching to fallback mode');
-    return switchToFallbackMode();
-  }
-  
-  /// Exit fallback mode and try to reconnect to OBD
-  Future<bool> exitFallbackMode() async {
-    if (!_fallbackModeActive) {
-      return true;
-    }
-    
-    _logger.info('Exiting fallback mode');
-    
-    try {
-      // Stop sensor collection
-      if (sensorService != null && sensorService!.isCollecting) {
-        sensorService!.stopCollection();
-      }
-      
-      _fallbackModeActive = false;
-      notifyListeners();
-      
-      // Try to initialize OBD again
-      return await initialize();
-    } catch (e) {
-      _logger.warning('Error exiting fallback mode: $e');
-      return false;
-    }
-  }
-  
-  /// Get combined data from available sources (OBD or sensors)
-  Future<OBDIIData?> getCombinedData() async {
-    // If in fallback mode, get data from sensors
-    if (_fallbackModeActive && sensorService != null) {
-      final sensorData = await sensorService!.getLatestSensorData();
-      if (sensorData != null) {
-        // Convert sensor data to a simplified OBDIIData format
-        return OBDIIData(
-          timestamp: sensorData.timestamp,
-          vehicleSpeed: sensorData.gpsSpeed, // Using GPS speed as vehicle speed
-          rpm: 0, // Not available from sensors
-          engineLoad: 0.0, // Not available from sensors
-          engineTemp: 0.0, // Not available from sensors
-          throttlePosition: 0.0, // Not available from sensors
-          // Add additional fields as needed
-        );
-      }
-      return null;
-    }
-    
-    // If connected to OBD, get data from there
-    if (isConnected) {
-      return getLatestOBDData();
-    }
-    
-    return null;
-  }
-  
   /// Override the dispose method to clean up resources
   @override
   void dispose() {
     _logger.info('Disposing OBD connection service');
-    
-    // Stop fallback mode if active
-    if (_fallbackModeActive && sensorService != null && sensorService!.isCollecting) {
-      sensorService!.stopCollection();
-    }
     
     // Disconnect if connected
     if (isConnected) {

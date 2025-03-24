@@ -90,8 +90,7 @@ void _registerServices() {
   // Register OBD Connection Service
   serviceLocator.registerLazySingleton<ObdConnectionService>(
     () => ObdConnectionService(
-      serviceLocator<ObdService>(),
-      sensorService: serviceLocator<SensorService>(),
+      serviceLocator<ObdService>()
     ),
   );
   

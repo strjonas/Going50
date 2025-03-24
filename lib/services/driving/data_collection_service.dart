@@ -41,11 +41,15 @@ class DataCollectionService extends ChangeNotifier {
   Timer? _backgroundCollectionTimer;
   static const _backgroundCollectionIntervalMs = 1000; // 1 second
   
+  // Fallback mode tracking
+  bool _useFallbackMode = false;
+  
   // Public getters
   bool get isInitialized => _isInitialized;
   bool get isCollecting => _isCollecting;
   String? get errorMessage => _errorMessage;
   List<CombinedDrivingData> get dataBuffer => List.unmodifiable(_dataBuffer);
+  bool get useFallbackMode => _useFallbackMode;
   
   /// Stream of combined driving data
   Stream<CombinedDrivingData> get dataStream => _dataStreamController.stream;
@@ -83,6 +87,15 @@ class DataCollectionService extends ChangeNotifier {
         return false;
       }
       
+      // Try to initialize OBD service, but don't fail if it doesn't work
+      // This allows the app to work with just sensors
+      try {
+        await _obdConnectionService.initialize();
+      } catch (e) {
+        _logger.warning('OBD initialization failed, will use sensor fallback: $e');
+        _useFallbackMode = true;
+      }
+      
       _isInitialized = true;
       _clearErrorMessage();
       notifyListeners();
@@ -111,6 +124,17 @@ class DataCollectionService extends ChangeNotifier {
       if (!sensorStarted) {
         _setErrorMessage('Failed to start sensor collection');
         return false;
+      }
+      
+      // Try to use OBD if available and not in fallback mode
+      if (!_useFallbackMode) {
+        // Check if OBD is connected
+        if (!_obdConnectionService.isConnected) {
+          _logger.info('OBD not connected, switching to sensor fallback mode');
+          _useFallbackMode = true;
+        } else {
+          _logger.info('Using OBD for data collection');
+        }
       }
       
       // Set up data processing timer
@@ -164,13 +188,13 @@ class DataCollectionService extends ChangeNotifier {
   
   /// Process OBD data received from the ObdConnectionService
   void _processObdData(OBDIIData obdData) {
-    // We'll create a combined data point when we receive sensor data
-    // This handles the case where OBD data might come at different frequency
-    
     // If we're not actively collecting, skip processing
     if (!_isCollecting) return;
     
-    // If we have recent sensor data, create a combined data point
+    // If we're in fallback mode, ignore OBD data
+    if (_useFallbackMode) return;
+    
+    // Create combined data point with OBD data and the latest sensor data
     final latestSensorData = _sensorService.latestSensorData;
     if (latestSensorData != null) {
       final timeDifference = DateTime.now().difference(latestSensorData.timestamp).inMilliseconds;
@@ -187,13 +211,14 @@ class DataCollectionService extends ChangeNotifier {
     // If we're not actively collecting, skip processing
     if (!_isCollecting) return;
     
-    // Get latest OBD data if available
-    OBDIIData? latestObdData;
-    if (_obdConnectionService.isConnected) {
-      latestObdData = _obdConnectionService.getLatestOBDData();
+    // If in fallback mode or OBD not connected, use sensor data only
+    if (_useFallbackMode || !_obdConnectionService.isConnected) {
+      _createCombinedDataPoint(null, sensorData);
+      return;
     }
     
-    // Create combined data point
+    // If OBD connected, get the latest OBD data and combine with sensor data
+    OBDIIData? latestObdData = _obdConnectionService.getLatestOBDData();
     _createCombinedDataPoint(latestObdData, sensorData);
   }
   
@@ -224,9 +249,9 @@ class DataCollectionService extends ChangeNotifier {
       final sensorData = await _sensorService.getLatestSensorData();
       if (sensorData == null) return;
       
-      // Get latest OBD data if available
+      // Get latest OBD data if available and not in fallback mode
       OBDIIData? obdData;
-      if (_obdConnectionService.isConnected) {
+      if (!_useFallbackMode && _obdConnectionService.isConnected) {
         obdData = _obdConnectionService.getLatestOBDData();
       }
       
@@ -247,6 +272,32 @@ class DataCollectionService extends ChangeNotifier {
     } catch (e) {
       _logger.warning('Error collecting data point: $e');
     }
+  }
+  
+  /// Enable fallback mode to use only sensor data
+  void enableFallbackMode() {
+    if (_useFallbackMode) return;
+    
+    _logger.info('Enabling sensor fallback mode');
+    _useFallbackMode = true;
+    notifyListeners();
+  }
+  
+  /// Attempt to use OBD data if available
+  Future<bool> tryUseObdMode() async {
+    if (!_useFallbackMode) return true;
+    
+    _logger.info('Attempting to exit fallback mode');
+    
+    // Check if OBD is connected
+    if (!_obdConnectionService.isConnected) {
+      _logger.info('OBD not connected, staying in fallback mode');
+      return false;
+    }
+    
+    _useFallbackMode = false;
+    notifyListeners();
+    return true;
   }
   
   /// Add data to the buffer with overflow protection
