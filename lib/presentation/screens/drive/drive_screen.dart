@@ -1,107 +1,334 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:going50/core/theme/app_colors.dart';
+import 'package:going50/presentation/providers/driving_provider.dart';
+import 'package:going50/presentation/providers/insights_provider.dart';
+import 'package:going50/presentation/screens/drive/components/connection_status_widget.dart';
+import 'package:going50/presentation/screens/drive/components/start_trip_button.dart';
+import 'package:going50/presentation/screens/drive/components/recent_trip_card.dart';
+import 'package:going50/core_models/trip.dart';
 
 /// DriveScreen is the main screen for the Drive tab.
 ///
 /// This screen provides access to trip recording functionality and displays
-/// connection status.
-class DriveScreen extends StatelessWidget {
+/// connection status as well as recent trip information.
+class DriveScreen extends StatefulWidget {
   const DriveScreen({super.key});
 
   @override
+  State<DriveScreen> createState() => _DriveScreenState();
+}
+
+class _DriveScreenState extends State<DriveScreen> {
+  bool _audioFeedbackEnabled = true;
+  
+  @override
   Widget build(BuildContext context) {
+    final drivingProvider = Provider.of<DrivingProvider>(context);
+    final insightsProvider = Provider.of<InsightsProvider>(context);
+    final currentEcoScore = drivingProvider.currentEcoScore;
+    final ecoScoreColor = AppColors.getEcoScoreColor(currentEcoScore);
+    final isFirstUse = insightsProvider.recentTrips.isEmpty;
+    final mostRecentTrip = insightsProvider.recentTrips.isNotEmpty 
+        ? insightsProvider.recentTrips.first 
+        : null;
+    
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Drive'),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.directions_car,
-              size: 64,
-              color: Colors.green,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Drive Tab',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Start recording your trips to improve your eco-driving score',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () {
-                // TODO: Implement trip recording functionality
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Trip recording not yet implemented'),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Status section (30% of the screen)
+              Expanded(
+                flex: 3,
+                child: _buildStatusSection(
+                  context, 
+                  drivingProvider, 
+                  currentEcoScore, 
+                  ecoScoreColor
                 ),
               ),
-              child: const Text(
-                'Start Trip',
-                style: TextStyle(fontSize: 16),
+              
+              // Action section (40% of the screen)
+              Expanded(
+                flex: 4,
+                child: _buildActionSection(
+                  context, 
+                  drivingProvider
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            _buildConnectionStatus(),
-          ],
+              
+              // Quick stats section (30% of the screen)
+              Expanded(
+                flex: 3,
+                child: _buildQuickStatsSection(
+                  context, 
+                  isFirstUse, 
+                  mostRecentTrip
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
   
-  /// Builds the connection status indicator widget
-  Widget _buildConnectionStatus() {
-    // TODO: Implement actual connection status check
-    const bool isConnected = false;
+  /// Builds the status section with connection status and eco-score
+  Widget _buildStatusSection(
+    BuildContext context, 
+    DrivingProvider drivingProvider,
+    double currentEcoScore,
+    Color ecoScoreColor,
+  ) {
+    final statusMessage = _getStatusMessage(drivingProvider);
     
-    final Color backgroundColor = isConnected ? Colors.green.withAlpha(26) : Colors.grey.withAlpha(26);
-    final Color borderColor = isConnected ? Colors.green : Colors.grey;
-    final IconData iconData = isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled;
-    final String statusText = isConnected ? 'OBD Connected' : 'OBD Not Connected';
-    final Color textColor = borderColor;
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: borderColor,
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            iconData,
-            color: textColor,
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            statusText,
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.w500,
+          // Connection status
+          const ConnectionStatusWidget(),
+          
+          const SizedBox(height: 16),
+          
+          // Latest eco-score
+          if (drivingProvider.isObdConnected || drivingProvider.isCollecting)
+            Column(
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: ecoScoreColor.withOpacity(0.1),
+                    border: Border.all(
+                      color: ecoScoreColor,
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      currentEcoScore.toInt().toString(),
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: ecoScoreColor,
+                      ),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 8),
+                
+                // Status message
+                Text(
+                  statusMessage,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
+        ],
+      ),
+    );
+  }
+  
+  /// Builds the action section with start trip button and audio toggle
+  Widget _buildActionSection(
+    BuildContext context, 
+    DrivingProvider drivingProvider,
+  ) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Start trip button
+          StartTripButton(
+            size: 100,
+            onBeforeStart: () {
+              // This would be used for any pre-trip setup, such as permission checks
+            },
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Device connection shortcut (if not connected)
+          if (!drivingProvider.isObdConnected)
+            TextButton.icon(
+              onPressed: () {
+                // TODO: Navigate to device connection screen
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Device connection not yet implemented'),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.bluetooth),
+              label: const Text('Connect OBD Device'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.secondary,
+              ),
+            ),
+            
+          const SizedBox(height: 24),
+          
+          // Audio feedback toggle
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Audio Feedback',
+                style: TextStyle(
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Switch(
+                value: _audioFeedbackEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _audioFeedbackEnabled = value;
+                  });
+                  // TODO: Implement audio feedback toggle in driving provider
+                },
+                activeColor: AppColors.primary,
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+  
+  /// Builds the quick stats section with recent trip or first use card
+  Widget _buildQuickStatsSection(
+    BuildContext context, 
+    bool isFirstUse, 
+    Trip? mostRecentTrip,
+  ) {
+    if (isFirstUse) {
+      return _buildFirstUseCard(context);
+    } else if (mostRecentTrip != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text(
+              'Recent Trip',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Expanded(
+            child: RecentTripCard(
+              trip: mostRecentTrip,
+              onTap: () {
+                // TODO: Navigate to trip details
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Trip details not yet implemented'),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: Text(
+              'Pull for more',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      );
+    } else {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+  }
+  
+  /// Builds a card for first-time users
+  Widget _buildFirstUseCard(BuildContext context) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.directions_car,
+                size: 48,
+                color: AppColors.primary,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Welcome to Going50!',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Start your first trip to begin tracking your eco-driving performance.',
+                style: TextStyle(fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () {
+                  // TODO: Navigate to onboarding guide or help
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Help not yet implemented'),
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+                child: const Text('Learn More'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  /// Gets an appropriate status message based on the current driving state
+  String _getStatusMessage(DrivingProvider drivingProvider) {
+    if (drivingProvider.isRecording) {
+      return 'Trip in progress';
+    } else if (drivingProvider.isObdConnected) {
+      return 'Ready to drive';
+    } else if (drivingProvider.isCollecting) {
+      return 'Using phone sensors';
+    } else if (drivingProvider.errorMessage != null) {
+      return 'Connection error';
+    } else {
+      return 'Connect device to start';
+    }
   }
 } 
