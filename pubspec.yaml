@@ -69,6 +69,7 @@ dependencies:
   geolocator: ^11.0.0
   sensors_plus: ^4.0.2
   battery_plus: ^5.0.3
+  fl_chart: 0.66.2
 
 dev_dependencies:
   flutter_test:

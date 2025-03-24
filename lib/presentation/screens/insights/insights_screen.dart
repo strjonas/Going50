@@ -3,10 +3,12 @@ import 'package:provider/provider.dart';
 import 'package:going50/presentation/providers/insights_provider.dart';
 import 'package:going50/presentation/widgets/common/layout/section_container.dart';
 import 'package:going50/presentation/screens/insights/components/time_period_selector.dart';
-import 'package:going50/presentation/screens/insights/components/eco_score_trend_chart.dart';
+import 'package:going50/presentation/widgets/common/charts/line_chart.dart';
 import 'package:going50/presentation/screens/insights/components/savings_summary_card.dart';
-import 'package:going50/presentation/screens/insights/components/driving_behaviors_chart.dart';
+import 'package:going50/presentation/widgets/common/charts/radar_chart.dart';
+import 'package:going50/presentation/widgets/common/charts/eco_score_gauge.dart';
 import 'package:going50/core/constants/route_constants.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 /// InsightsScreen is the main screen for the Insights tab.
 ///
@@ -83,6 +85,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
 
           // Generate labels for the eco-score trend chart
           final trendLabels = _generateTrendLabels(insightsProvider.selectedTimeFrame);
+          
+          // Convert trend data to FlSpot for AppLineChart
+          final trendSpots = _convertTrendDataToFlSpots(insightsProvider.ecoScoreTrend);
 
           return RefreshIndicator(
             onRefresh: () => insightsProvider.refreshInsights(),
@@ -114,18 +119,24 @@ class _InsightsScreenState extends State<InsightsScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _buildScoreCircle(
-                              context,
-                              score: insightsProvider.currentMetrics?.overallEcoScore ?? 0,
+                            EcoScoreGauge(
+                              score: (insightsProvider.currentMetrics?.overallEcoScore ?? 0).toDouble(),
+                              size: 140,
+                              showLabel: true,
+                              showScore: true,
                             ),
                           ],
                         ),
                         const SizedBox(height: 16),
-                        EcoScoreTrendChart(
-                          scores: insightsProvider.ecoScoreTrend,
-                          labels: trendLabels,
-                          title: 'Trend',
+                        AppLineChart(
+                          dataPoints: [trendSpots],
+                          xLabels: trendLabels,
                           height: 150,
+                          title: 'Trend',
+                          showGrid: true,
+                          showFill: true,
+                          minY: 0,
+                          maxY: 100,
                         ),
                       ],
                     ),
@@ -150,9 +161,11 @@ class _InsightsScreenState extends State<InsightsScreen> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          child: DrivingBehaviorsChart(
-                            behaviorScores: insightsProvider.behaviorScores,
-                            behaviorColors: _getBehaviorColors(),
+                          child: AppRadarChart(
+                            data: _convertBehaviorScoresToDoubles(insightsProvider.behaviorScores),
+                            size: 250,
+                            maxValue: 100,
+                            rings: 4,
                           ),
                         ),
                         if (insightsProvider.currentMetrics != null)
@@ -212,80 +225,15 @@ class _InsightsScreenState extends State<InsightsScreen> {
     }
   }
   
-  /// Get colors for different driving behaviors
-  Map<String, Color> _getBehaviorColors() {
-    return {
-      'calm_driving': Colors.blue,
-      'speed_optimization': Colors.green,
-      'idle_management': Colors.orange,
-      'trip_planning': Colors.purple,
-      'rpm_efficiency': Colors.red,
-      'stop_management': Colors.teal,
-      'following_distance': Colors.indigo,
-    };
+  /// Convert the behavior scores from int to double
+  Map<String, double> _convertBehaviorScoresToDoubles(Map<String, int> behaviorScores) {
+    return behaviorScores.map((key, value) => MapEntry(key, value.toDouble()));
   }
   
-  /// Build a circular eco-score indicator
-  Widget _buildScoreCircle(BuildContext context, {required int score}) {
-    final theme = Theme.of(context);
-    final size = 140.0;
-    
-    // Determine color based on score
-    Color scoreColor;
-    if (score >= 80) {
-      scoreColor = Colors.green;
-    } else if (score >= 60) {
-      scoreColor = Colors.lightGreen;
-    } else if (score >= 40) {
-      scoreColor = Colors.amber;
-    } else if (score >= 20) {
-      scoreColor = Colors.orange;
-    } else {
-      scoreColor = Colors.red;
-    }
-    
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [
-            scoreColor.withAlpha(179), // ~70% opacity
-            scoreColor.withAlpha(77),  // ~30% opacity
-          ],
-          center: Alignment.center,
-          radius: 0.8,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: scoreColor.withAlpha(51), // ~20% opacity
-            blurRadius: 10,
-            spreadRadius: 3,
-          ),
-        ],
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              score.toString(),
-              style: theme.textTheme.headlineLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            Text(
-              'Eco-Score',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withAlpha(179), // ~70% opacity
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  /// Convert trend data to FlSpot for use with AppLineChart
+  List<FlSpot> _convertTrendDataToFlSpots(List<double> trendData) {
+    return List.generate(trendData.length, (index) => 
+      FlSpot(index.toDouble(), trendData[index]));
   }
   
   /// Build a recommendations list
