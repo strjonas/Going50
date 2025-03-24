@@ -489,17 +489,38 @@ class AppDatabase extends _$AppDatabase {
   // User profile methods
   Future<void> saveUserProfile(String userId, String name, bool isPublic, bool allowDataUpload) async {
     final now = DateTime.now();
-    await into(userProfilesTable).insert(
-      UserProfilesTableCompanion.insert(
-        id: userId,
-        name: Value(name),
-        createdAt: now,
-        lastUpdatedAt: now,
-        isPublic: Value(isPublic),
-        allowDataUpload: Value(allowDataUpload),
-      ),
-      mode: InsertMode.insertOrReplace,
-    );
+    
+    // Use a transaction to ensure data consistency
+    await transaction(() async {
+      // First check if user already exists
+      final existingUser = await (select(userProfilesTable)
+        ..where((t) => t.id.equals(userId)))
+        .getSingleOrNull();
+        
+      if (existingUser != null) {
+        // Update existing user
+        await (update(userProfilesTable)..where((t) => t.id.equals(userId)))
+          .write(UserProfilesTableCompanion(
+            name: Value(name),
+            lastUpdatedAt: Value(now),
+            isPublic: Value(isPublic),
+            allowDataUpload: Value(allowDataUpload),
+          ));
+      } else {
+        // Insert new user
+        await into(userProfilesTable).insert(
+          UserProfilesTableCompanion.insert(
+            id: userId,
+            name: Value(name),
+            createdAt: now,
+            lastUpdatedAt: now,
+            isPublic: Value(isPublic),
+            allowDataUpload: Value(allowDataUpload),
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+      }
+    });
   }
   
   /// Get a user profile by ID

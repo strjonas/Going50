@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:math'; // Import for max function
 
 /// A reusable bar chart component that can be used throughout the app.
 ///
@@ -250,6 +251,7 @@ class _AppBarChartState extends State<AppBarChart> with SingleTickerProviderStat
                   gridData: FlGridData(
                     show: widget.showGrid,
                     drawVerticalLine: false,
+                    horizontalInterval: max((widget.maxY ?? 1) / 4, 0.1),
                     getDrawingHorizontalLine: (value) => FlLine(
                       color: theme.colorScheme.outline.withOpacity(0.2),
                       strokeWidth: 0.5,

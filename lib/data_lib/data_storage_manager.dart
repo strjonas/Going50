@@ -40,15 +40,48 @@ class DataStorageManager {
   bool _allowCloudSync = false;
   bool _isPublicProfile = false;
   
+  // Added to prevent multiple concurrent initialization
+  static Future<void>? _initializationFuture;
+  
   DataStorageManager._internal() : _database = AppDatabase();
   
   /// Initialize the storage manager and ensure user profile exists
   Future<void> initialize() async {
+    // If already initialized, return immediately
     if (_isInitialized) return;
     
+    // If initialization is in progress, wait for it to complete
+    if (_initializationFuture != null) {
+      await _initializationFuture;
+      return;
+    }
+    
+    // Create a new initialization future
+    _initializationFuture = _doInitialize();
+    
+    // Wait for initialization to complete
+    await _initializationFuture;
+    
+    // Reset the initialization future
+    _initializationFuture = null;
+  }
+  
+  /// The actual initialization function
+  Future<void> _doInitialize() async {
     try {
+      _logger.info('Starting DataStorageManager initialization');
+      
       // Ensure we have a user profile
       await _loadOrCreateUserProfile();
+      
+      // Verify user was saved by checking again
+      final userProfile = await _database.getUserProfileById(_currentUserId!);
+      if (userProfile == null) {
+        throw Exception('Failed to create or verify user profile after attempts');
+      }
+      
+      // Add a small delay to ensure user profile is saved to database
+      await Future.delayed(Duration(milliseconds: 200));
       
       // Initialize default privacy settings
       await _ensureDefaultPrivacySettings();
@@ -57,6 +90,8 @@ class DataStorageManager {
       _logger.info('DataStorageManager initialized successfully');
     } catch (e) {
       _logger.severe('Failed to initialize DataStorageManager: $e');
+      // Reset initialization status so it can be attempted again
+      _isInitialized = false;
       rethrow;
     }
   }
@@ -72,17 +107,74 @@ class DataStorageManager {
         _currentUserId = _uuid.v4();
         await prefs.setString('user_id', _currentUserId!);
         
-        // Create default user profile in database
-        await _database.saveUserProfile(
-          _currentUserId!, 
-          'Default User', 
-          false, // isPublic 
-          false, // allowDataUpload
-        );
+        _logger.info('Generated new user ID: $_currentUserId, creating profile');
+        
+        // Create default user profile in database with retry logic
+        int attempts = 0;
+        const maxAttempts = 3;
+        UserProfile? userProfile;
+        
+        while (userProfile == null && attempts < maxAttempts) {
+          attempts++;
+          _logger.info('Attempting to create user profile (attempt $attempts)');
+          
+          userProfile = await saveUserProfile(
+            _currentUserId!, 
+            'Default User', 
+            false, // isPublic 
+            false, // allowDataUpload
+          );
+          
+          if (userProfile == null) {
+            _logger.warning('Failed to create user profile on attempt $attempts');
+            await Future.delayed(Duration(milliseconds: 100 * attempts));
+          }
+        }
+        
+        if (userProfile == null) {
+          throw Exception('Failed to create new user profile after $maxAttempts attempts');
+        }
         
         _logger.info('Created new user profile with ID: $_currentUserId');
       } else {
-        _logger.info('Loaded existing user profile with ID: $_currentUserId');
+        _logger.info('Found existing user ID in preferences: $_currentUserId');
+        
+        // Verify the user exists in the database
+        final existingUser = await _database.getUserProfileById(_currentUserId!);
+        
+        if (existingUser == null) {
+          _logger.warning('User ID exists in preferences but not in database. Recreating user profile.');
+          
+          // Create user profile in database with retry logic
+          int attempts = 0;
+          const maxAttempts = 3;
+          UserProfile? userProfile;
+          
+          while (userProfile == null && attempts < maxAttempts) {
+            attempts++;
+            _logger.info('Attempting to recreate missing user profile (attempt $attempts)');
+            
+            userProfile = await saveUserProfile(
+              _currentUserId!, 
+              'Default User', 
+              false, // isPublic 
+              false, // allowDataUpload
+            );
+            
+            if (userProfile == null) {
+              _logger.warning('Failed to recreate user profile on attempt $attempts');
+              await Future.delayed(Duration(milliseconds: 100 * attempts));
+            }
+          }
+          
+          if (userProfile == null) {
+            throw Exception('Failed to recreate missing user profile after $maxAttempts attempts');
+          }
+          
+          _logger.info('Recreated user profile with ID: $_currentUserId');
+        } else {
+          _logger.info('Loaded existing user profile with ID: $_currentUserId');
+        }
       }
       
       // Load sync preferences
@@ -99,23 +191,56 @@ class DataStorageManager {
   Future<void> _ensureDefaultPrivacySettings() async {
     if (_currentUserId == null) return;
     
-    final settings = await _database.getDataPrivacySettingsForUser(_currentUserId!);
-    
-    // If no settings exist, create default ones
-    if (settings.isEmpty) {
-      final dataTypes = ['trips', 'location', 'driving_events', 'performance_metrics'];
-      
-      for (final dataType in dataTypes) {
-        await _database.saveDataPrivacySettings(
-          DataPrivacySettings(
-            id: _uuid.v4(), 
-            userId: _currentUserId!, 
-            dataType: dataType,
-          ),
-        );
+    try {
+      // First verify the user exists in the database to avoid foreign key issues
+      final userProfile = await _database.getUserProfileById(_currentUserId!);
+      if (userProfile == null) {
+        _logger.warning('Cannot create privacy settings: User $_currentUserId does not exist in database');
+        return;
       }
       
-      _logger.info('Created default privacy settings for user $_currentUserId');
+      final settings = await _database.getDataPrivacySettingsForUser(_currentUserId!);
+      
+      // If no settings exist, create default ones
+      if (settings.isEmpty) {
+        _logger.info('No privacy settings found for user $_currentUserId, creating defaults');
+        
+        final dataTypes = ['trips', 'location', 'driving_events', 'performance_metrics'];
+        int successCount = 0;
+        
+        for (final dataType in dataTypes) {
+          try {
+            final settingId = _uuid.v4();
+            _logger.info('Creating privacy setting for $dataType with ID $settingId');
+            
+            await _database.saveDataPrivacySettings(
+              DataPrivacySettings(
+                id: settingId, 
+                userId: _currentUserId!, 
+                dataType: dataType,
+              ),
+            );
+            
+            // Verify the setting was saved
+            final updatedSettings = await _database.getDataPrivacySettingsForUser(_currentUserId!);
+            if (updatedSettings.any((s) => s.dataType == dataType)) {
+              successCount++;
+              _logger.info('Privacy setting for $dataType created successfully');
+            } else {
+              _logger.warning('Failed to verify privacy setting for $dataType was created');
+            }
+          } catch (e) {
+            _logger.warning('Error creating privacy setting for $dataType: $e');
+          }
+        }
+        
+        _logger.info('Created $successCount/${dataTypes.length} default privacy settings for user $_currentUserId');
+      } else {
+        _logger.info('Found ${settings.length} existing privacy settings for user $_currentUserId');
+      }
+    } catch (e) {
+      _logger.warning('Error ensuring default privacy settings: $e');
+      // Don't rethrow to avoid crashing the app initialization
     }
   }
   
@@ -304,16 +429,54 @@ class DataStorageManager {
     }
   }
   
-  /// Save a user profile
-  Future<void> saveUserProfile(String userId, String name, bool isPublic, bool allowDataUpload) async {
-    if (!_isInitialized) await initialize();
+  /// Save a user profile with the given properties
+  Future<UserProfile?> saveUserProfile(String userId, String name, bool isPublic, bool allowDataUpload) async {
+    // Don't call initialize here to avoid recursive initialization
     
     try {
-      await _database.saveUserProfile(userId, name, isPublic, allowDataUpload);
-      _logger.info('Saved user profile: $userId');
+      _logger.info('Attempting to save user profile: $userId');
+      
+      // Add retry logic to ensure the profile is saved
+      UserProfile? savedUser;
+      int attempts = 0;
+      const maxAttempts = 3;
+      
+      while (savedUser == null && attempts < maxAttempts) {
+        attempts++;
+        
+        // Save the user profile
+        await _database.saveUserProfile(userId, name, isPublic, allowDataUpload);
+        
+        // Verify the user was saved by retrieving it
+        savedUser = await _database.getUserProfileById(userId);
+        
+        if (savedUser != null) {
+          _logger.info('User profile saved successfully: $userId (attempt $attempts)');
+        } else {
+          _logger.warning('User profile not saved on attempt $attempts, retrying...');
+          // Small delay before retrying
+          await Future.delayed(Duration(milliseconds: 50 * attempts));
+        }
+      }
+      
+      if (savedUser == null) {
+        _logger.severe('Failed to save user profile after $maxAttempts attempts: $userId');
+        return null;
+      }
+      
+      // Update local state
+      if (userId == _currentUserId) {
+        _isPublicProfile = isPublic;
+        
+        // Update shared preferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_public_profile', isPublic);
+      }
+      
+      return savedUser;
     } catch (e) {
       _logger.severe('Error saving user profile: $e');
-      rethrow;
+      return null;
     }
   }
   

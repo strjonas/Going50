@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:math'; // Import for max function
 
 /// A reusable line chart component that can be used throughout the app.
 ///
@@ -226,10 +227,10 @@ class _AppLineChartState extends State<AppLineChart> with SingleTickerProviderSt
                   gridData: FlGridData(
                     show: widget.showGrid,
                     drawVerticalLine: widget.showGrid,
-                    horizontalInterval: (effectiveMaxY - effectiveMinY) / 4,
-                    verticalInterval: (maxX - minX) / 6,
+                    horizontalInterval: max((effectiveMaxY - effectiveMinY) / 4, 0.1),
+                    verticalInterval: max((maxX - minX) / 6, 0.1),
                     checkToShowHorizontalLine: (value) => 
-                      value % ((effectiveMaxY - effectiveMinY) / 4) == 0,
+                      value % max((effectiveMaxY - effectiveMinY) / 4, 0.1) < 0.01,
                     getDrawingHorizontalLine: (_) => FlLine(
                       color: theme.colorScheme.outline.withOpacity(0.2),
                       strokeWidth: 0.5,
