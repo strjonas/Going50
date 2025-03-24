@@ -58,7 +58,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(24.0),
               ),
               child: TextField(
@@ -91,7 +91,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
           const SizedBox(width: 8.0),
           Container(
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceVariant,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(24.0),
             ),
             child: IconButton(

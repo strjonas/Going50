@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:logging/logging.dart';
 
-import '../bluetooth/bluetooth_connection.dart';
 import '../interfaces/obd_connection.dart';
 import '../models/adapter_config.dart';
 import '../models/adapter_config_factory.dart';

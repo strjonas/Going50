@@ -108,7 +108,7 @@ class _ValueCarouselScreenState extends State<ValueCarouselScreen> {
                       shape: BoxShape.circle,
                       color: _currentPage == index
                           ? theme.colorScheme.primary
-                          : theme.colorScheme.surfaceVariant,
+                          : theme.colorScheme.surfaceContainerHighest,
                     ),
                   ),
                 ),

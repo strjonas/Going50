@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:going50/obd_lib/models/adapter_config.dart';
 import 'package:going50/obd_lib/models/adapter_config_factory.dart';
 import 'package:going50/obd_lib/models/adapter_config_validator.dart';
-import 'package:going50/obd_lib/protocol/obd_constants.dart';
 
 void main() {
   group('AdapterConfigValidator', () {

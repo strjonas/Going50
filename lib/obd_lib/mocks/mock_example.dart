@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../obd_factory.dart';
 import '../obd_service.dart';
-import '../protocol/obd_constants.dart';
 import 'mock_test_data.dart';
 
 /// Example of using the mock OBD implementation

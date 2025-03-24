@@ -1,10 +1,6 @@
-import 'models/adapter_config.dart';
 import 'models/adapter_config_factory.dart';
-import 'profiles/adapter_profile.dart';
 import 'profiles/cheap_elm327_profile.dart';
 import 'profiles/premium_elm327_profile.dart';
-import 'protocol/elm327_protocol.dart';
-import 'interfaces/obd_connection.dart';
 import 'package:logging/logging.dart';
 
 /// Example demonstrating how to use the adapter configuration framework

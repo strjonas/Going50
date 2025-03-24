@@ -1,5 +1,6 @@
 /// Application-wide constants for the Going50 app.
 /// This file contains various constants used throughout the application.
+library;
 
 /// App information constants
 class AppInfo {

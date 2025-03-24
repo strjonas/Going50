@@ -2,7 +2,6 @@ import 'package:logging/logging.dart';
 import '../../models/obd_command.dart';
 import '../../models/obd_data.dart';
 import '../obd_constants.dart';
-import '../obd_data_parser.dart';
 import 'obd_response_processor.dart';
 
 /// Processor for premium ELM327 adapters, which follow the standard OBD-II protocol more closely
@@ -273,10 +272,10 @@ class PremiumElm327Processor extends ObdResponseProcessor {
             try {
               final byteValue = int.parse(part, radix: 16);
               dataBytes.add(byteValue);
-              _logger.fine('Premium ELM - Fallback - Extracted byte: $byteValue (hex: ${part})');
+              _logger.fine('Premium ELM - Fallback - Extracted byte: $byteValue (hex: $part)');
             } catch (e) {
               // Skip non-hex parts
-              _logger.fine('Premium ELM - Fallback - Skipped non-hex part: ${part}');
+              _logger.fine('Premium ELM - Fallback - Skipped non-hex part: $part');
             }
           }
         }

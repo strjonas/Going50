@@ -1,14 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:logging/logging.dart';
-import '../bluetooth/bluetooth_connection.dart';
 import '../interfaces/obd_connection.dart';
 import '../protocol/elm327_protocol.dart';
-import '../protocol/obd_protocol.dart';
 import '../protocol/obd_constants.dart';
-import '../protocol/obd_commands.dart';
 import '../models/obd_command.dart';
-import '../models/obd_data.dart';
 
 /// Class containing commands for testing OBD functionality
 class TestCommands {

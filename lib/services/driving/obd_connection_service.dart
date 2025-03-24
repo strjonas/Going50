@@ -8,7 +8,6 @@ import 'package:going50/obd_lib/models/bluetooth_device.dart';
 import 'package:going50/obd_lib/models/obd_data.dart';
 import 'package:going50/obd_lib/protocol/obd_constants.dart';
 import 'package:logging/logging.dart';
-import 'package:going50/services/driving/sensor_service.dart';
 
 /// A service that manages the connection to the OBD device and provides
 /// an interface for retrieving vehicle data.

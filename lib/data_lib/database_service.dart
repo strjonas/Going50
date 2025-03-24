@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:logging/logging.dart';
+import 'package:going50/core_models/user_profile.dart';
 
 // Models
 import 'package:going50/core_models/trip.dart';
@@ -496,6 +499,28 @@ class AppDatabase extends _$AppDatabase {
         allowDataUpload: Value(allowDataUpload),
       ),
       mode: InsertMode.insertOrReplace,
+    );
+  }
+  
+  /// Get a user profile by ID
+  Future<UserProfile?> getUserProfileById(String userId) async {
+    final query = select(userProfilesTable)
+      ..where((t) => t.id.equals(userId));
+    
+    final result = await query.getSingleOrNull();
+    
+    if (result == null) {
+      return null;
+    }
+    
+    return UserProfile(
+      id: result.id,
+      name: result.name ?? 'Anonymous',
+      createdAt: result.createdAt,
+      lastUpdatedAt: result.lastUpdatedAt,
+      isPublic: result.isPublic,
+      allowDataUpload: result.allowDataUpload,
+      preferences: result.preferencesJson != null ? jsonDecode(result.preferencesJson!) : null,
     );
   }
   

@@ -101,7 +101,7 @@ class _EcoScoreGaugeState extends State<EcoScoreGauge> with SingleTickerProvider
                   painter: _EcoScoreGaugePainter(
                     score: scoreValue * _animation.value,
                     backgroundColor: widget.backgroundColor ?? 
-                        theme.colorScheme.surfaceVariant.withOpacity(0.4),
+                        theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
                     thickness: widget.thickness,
                   ),
                   size: Size(widget.size, widget.size),

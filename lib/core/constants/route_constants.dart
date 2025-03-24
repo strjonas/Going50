@@ -1,5 +1,6 @@
 /// Route constants for the Going50 app.
 /// This file contains named routes used throughout the application.
+library;
 
 /// Main tab routes
 class TabRoutes {

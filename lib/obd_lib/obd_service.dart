@@ -3,12 +3,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 
-import 'bluetooth/bluetooth_connection.dart';
 import 'bluetooth/bluetooth_scanner.dart';
 import 'models/bluetooth_device.dart';
 import 'models/obd_data.dart';
 import 'obd_factory.dart';
-import 'protocol/elm327_protocol.dart';
 import 'protocol/obd_protocol.dart';
 import 'protocol/obd_constants.dart';
 

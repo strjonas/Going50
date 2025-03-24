@@ -191,7 +191,7 @@ class _AppLineChartState extends State<AppLineChart> with SingleTickerProviderSt
                 LineChartData(
                   lineTouchData: LineTouchData(
                     touchTooltipData: LineTouchTooltipData(
-                      tooltipBgColor: theme.colorScheme.surfaceVariant.withOpacity(0.8),
+                      tooltipBgColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.8),
                       getTooltipItems: (spots) {
                         return spots.map((spot) {
                           final seriesIndex = spot.barIndex;
@@ -201,7 +201,7 @@ class _AppLineChartState extends State<AppLineChart> with SingleTickerProviderSt
                               : theme.colorScheme.primary;
                               
                           return LineTooltipItem(
-                            '${spot.y.toStringAsFixed(1)}',
+                            spot.y.toStringAsFixed(1),
                             TextStyle(
                               color: theme.colorScheme.onSurface,
                               fontWeight: FontWeight.bold,

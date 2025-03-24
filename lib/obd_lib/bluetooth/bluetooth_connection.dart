@@ -120,7 +120,7 @@ class BluetoothConnection implements ObdConnection {
       
       // Clean up
       subscription.cancel();
-      timeoutTimer?.cancel();
+      timeoutTimer.cancel();
       
       return result;
     } catch (e) {

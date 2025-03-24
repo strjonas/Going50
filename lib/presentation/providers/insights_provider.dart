@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';  // Added for DateTimeRange
 import 'package:going50/core_models/trip.dart';
 import 'package:going50/core_models/driver_performance_metrics.dart';
@@ -31,12 +30,12 @@ class InsightsProvider extends ChangeNotifier {
   // Cache for performance metrics
   DriverPerformanceMetrics? _currentMetrics;
   Map<String, List<double>> _ecoScoreTrends = {};
-  Map<String, double> _fuelSavings = {};
-  Map<String, double> _co2Reduction = {};
-  Map<String, double> _moneySavings = {};
+  final Map<String, double> _fuelSavings = {};
+  final Map<String, double> _co2Reduction = {};
+  final Map<String, double> _moneySavings = {};
 
   // Cache for performance metrics service results
-  Map<String, PerformanceMetrics> _performanceMetricsCache = {};
+  final Map<String, PerformanceMetrics> _performanceMetricsCache = {};
   
   /// Constructor
   InsightsProvider(this._drivingService, this._metricsService) {

@@ -173,7 +173,7 @@ class _ActiveDriveScreenState extends State<ActiveDriveScreen> with WidgetsBindi
           // Trip duration
           Text(
             drivingProvider.currentTrip?.startTime != null 
-                ? _formatDuration(DateTime.now().difference(drivingProvider.currentTrip!.startTime!))
+                ? _formatDuration(DateTime.now().difference(drivingProvider.currentTrip!.startTime))
                 : '00:00',
             style: const TextStyle(
               color: Colors.white,

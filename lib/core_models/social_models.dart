@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 /// Represents a connection between users in the social features system.
 /// 

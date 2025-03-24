@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 /// DataPrivacySettings defines user preferences for privacy controls on various data types.
 ///

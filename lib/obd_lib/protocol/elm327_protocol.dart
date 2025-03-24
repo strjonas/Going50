@@ -10,7 +10,6 @@ import '../models/adapter_config_factory.dart';
 import '../models/adapter_config_validator.dart';
 import 'obd_constants.dart';
 import 'obd_commands.dart';
-import 'obd_data_parser.dart';
 import 'response_processor/obd_response_processor.dart';
 import 'response_processor/processor_factory.dart';
 import '../profiles/profile_manager.dart';
@@ -270,10 +269,8 @@ class Elm327Protocol implements ObdProtocol {
           
           if (data != null) {
             // Only add valid data to the stream
-            if (data != null) {
-              _dataStreamController.add(data);
-            }
-          }
+            _dataStreamController.add(data);
+                    }
         }
         
         _currentCommand = null;

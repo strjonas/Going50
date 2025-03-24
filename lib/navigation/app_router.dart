@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../core/constants/route_constants.dart';
-import '../presentation/screens/onboarding/onboarding_screen.dart';
 import '../presentation/screens/onboarding/welcome_screen.dart';
 import '../presentation/screens/onboarding/value_carousel_screen.dart';
 import '../presentation/screens/onboarding/account_choice_screen.dart';

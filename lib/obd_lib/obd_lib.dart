@@ -4,7 +4,7 @@
 // in Flutter applications. It handles Bluetooth connectivity, protocol
 // communication, and data parsing.
 
-library obd_lib;
+library;
 
 // Main service class
 export 'obd_service.dart';

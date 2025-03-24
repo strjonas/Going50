@@ -14,7 +14,6 @@ import 'elm327_v13_profile.dart';
 import 'elm327_v14_profile.dart';
 import 'elm327_v20_profile.dart';
 import 'mock_adapter_profile.dart';
-import '../bluetooth/response_processor.dart';
 import '../models/adapter_config.dart';
 import '../models/adapter_config_factory.dart';
 import '../models/adapter_config_validator.dart';
@@ -875,7 +874,7 @@ class ProfileManager {
       
       // Test 1: Describe Protocol (ATDESC)
       final protocolDescResponse = await _sendCommandWithResponse(connection, 'ATDESC', timeout: 500);
-      if (!protocolDescResponse.contains('?') && !protocolDescResponse.isEmpty) {
+      if (!protocolDescResponse.contains('?') && protocolDescResponse.isNotEmpty) {
         supportedCommands++;
       }
       

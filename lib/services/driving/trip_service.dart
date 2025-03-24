@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
-import 'package:uuid/uuid.dart';
 
 // Local imports
 import 'package:going50/core_models/trip.dart';

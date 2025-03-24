@@ -165,7 +165,7 @@ class EventNotification extends StatelessWidget {
       default:
         // If we get an unknown event type, provide a generic notification
         final String eventName = event.eventType.split('_').map((word) => 
-            word.length > 0 ? word[0].toUpperCase() + word.substring(1) : '').join(' ');
+            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '').join(' ');
             
         return _EventInfo(
           title: eventName,

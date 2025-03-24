@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:going50/core/theme/app_colors.dart';
 
 /// A reusable bar chart component that can be used throughout the app.
 ///
@@ -164,11 +163,11 @@ class _AppBarChartState extends State<AppBarChart> with SingleTickerProviderStat
                   barTouchData: BarTouchData(
                     enabled: true,
                     touchTooltipData: BarTouchTooltipData(
-                      tooltipBgColor: theme.colorScheme.surfaceVariant.withOpacity(0.8),
+                      tooltipBgColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.8),
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                         final barData = widget.data[groupIndex];
                         return BarTooltipItem(
-                          '${barData.y.toStringAsFixed(1)}',
+                          barData.y.toStringAsFixed(1),
                           TextStyle(
                             color: theme.colorScheme.onSurface,
                             fontWeight: FontWeight.bold,
@@ -308,7 +307,7 @@ class _AppBarChartState extends State<AppBarChart> with SingleTickerProviderStat
             backDrawRodData: BackgroundBarChartRodData(
               show: true,
               toY: data.map((e) => e.y).reduce((a, b) => a > b ? a : b),
-              color: Theme.of(context).colorScheme.background,
+              color: Theme.of(context).colorScheme.surface,
             ),
           ),
         ],

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -13,9 +12,8 @@ import 'package:going50/core_models/driver_performance_metrics.dart';
 import 'package:going50/core_models/driving_event.dart';
 import 'package:going50/core_models/data_privacy_settings.dart';
 import 'package:going50/core_models/social_models.dart';
-import 'package:going50/core_models/user_preferences.dart';
 import 'package:going50/core_models/gamification_models.dart';
-import 'package:going50/core_models/external_integration.dart';
+import 'package:going50/core_models/user_profile.dart';
 
 // Local imports
 import 'package:going50/data_lib/database_service.dart';
@@ -290,6 +288,31 @@ class DataStorageManager {
       _logger.info('Updated user settings: public=$_isPublicProfile, sync=$_allowCloudSync');
     } catch (e) {
       _logger.severe('Error updating user settings: $e');
+      rethrow;
+    }
+  }
+  
+  /// Get a user profile by ID
+  Future<UserProfile?> getUserProfileById(String userId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      return await _database.getUserProfileById(userId);
+    } catch (e) {
+      _logger.warning('Error retrieving user profile for ID $userId: $e');
+      return null;
+    }
+  }
+  
+  /// Save a user profile
+  Future<void> saveUserProfile(String userId, String name, bool isPublic, bool allowDataUpload) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      await _database.saveUserProfile(userId, name, isPublic, allowDataUpload);
+      _logger.info('Saved user profile: $userId');
+    } catch (e) {
+      _logger.severe('Error saving user profile: $e');
       rethrow;
     }
   }

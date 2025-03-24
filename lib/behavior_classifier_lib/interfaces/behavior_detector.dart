@@ -97,9 +97,6 @@ class BehaviorDetectionResult {
   
   @override
   String toString() {
-    return 'Detected: $detected, Confidence: ${(confidence * 100).toStringAsFixed(1)}%, ' + 
-           (severity != null ? 'Severity: ${(severity! * 100).toStringAsFixed(1)}%, ' : '') +
-           'Occurrences: $occurrences, ' +
-           (message != null ? 'Message: $message' : '');
+    return 'Detected: $detected, Confidence: ${(confidence * 100).toStringAsFixed(1)}%, ${severity != null ? 'Severity: ${(severity! * 100).toStringAsFixed(1)}%, ' : ''}Occurrences: $occurrences, ${message != null ? 'Message: $message' : ''}';
   }
 } 

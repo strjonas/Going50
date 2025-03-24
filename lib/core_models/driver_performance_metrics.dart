@@ -118,12 +118,8 @@ class DriverPerformanceMetrics {
       totalDistanceKm: json['totalDistanceKm'].toDouble(),
       totalDrivingTimeMinutes: json['totalDrivingTimeMinutes'].toDouble(),
       averageSpeedKmh: json['averageSpeedKmh'].toDouble(),
-      estimatedFuelSavingsL: json['estimatedFuelSavingsL'] != null 
-          ? json['estimatedFuelSavingsL'].toDouble() 
-          : null,
-      estimatedCO2ReductionKg: json['estimatedCO2ReductionKg'] != null 
-          ? json['estimatedCO2ReductionKg'].toDouble() 
-          : null,
+      estimatedFuelSavingsL: json['estimatedFuelSavingsL']?.toDouble(),
+      estimatedCO2ReductionKg: json['estimatedCO2ReductionKg']?.toDouble(),
       calmDrivingScore: json['calmDrivingScore'],
       speedOptimizationScore: json['speedOptimizationScore'],
       idlingScore: json['idlingScore'],

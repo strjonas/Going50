@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import '../interfaces/obd_connection.dart';
 import '../protocol/obd_protocol.dart';

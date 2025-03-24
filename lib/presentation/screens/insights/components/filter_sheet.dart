@@ -284,7 +284,7 @@ class _FilterSheetState extends State<FilterSheet> {
                 },
                 checkmarkColor: Colors.white,
                 selectedColor: AppColors.primary,
-                backgroundColor: theme.colorScheme.surfaceVariant,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
               );
             }).toList(),
           ),

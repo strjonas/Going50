@@ -19,7 +19,7 @@ class EcoDrivingManager {
   EcoDrivingManager({
     List<BehaviorDetector>? detectors,
     this.historyWindowSize = 60, // Default to 1 minute of data (assuming 1 sample per second)
-  }) : this.detectors = detectors ?? [
+  }) : detectors = detectors ?? [
     CalmDrivingDetector(),
     SpeedOptimizationDetector(),
     IdlingDetector(),

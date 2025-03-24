@@ -4,7 +4,6 @@ import 'protocol/obd_protocol.dart';
 import 'protocol/elm327_protocol.dart';
 import 'bluetooth/bluetooth_connection.dart';
 import 'profiles/profile_manager.dart';
-import 'profiles/adapter_profile.dart';
 
 /// Factory for creating OBD-II connections and protocols
 class ObdFactory {

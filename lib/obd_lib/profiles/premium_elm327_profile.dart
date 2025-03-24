@@ -1,15 +1,11 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:logging/logging.dart';
 
 import '../interfaces/obd_connection.dart';
 import '../models/adapter_config.dart';
 import '../models/adapter_config_factory.dart';
-import '../protocol/obd_constants.dart';
 import '../protocol/obd_protocol.dart';
 import '../protocol/elm327_protocol.dart';
-import '../bluetooth/bluetooth_connection.dart';
-import '../bluetooth/response_processor.dart';
 import 'adapter_profile.dart';
 import 'profile_manager.dart';
 

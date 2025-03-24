@@ -13,7 +13,7 @@ class RPMManagementDetector extends BehaviorDetector {
     Map<int, int>? gearRPMThresholds,
     this.defaultRPMThreshold = 2500, // Conservative default for all gears
     this.speedRPMRatioThreshold = 70.0, // RPM per km/h threshold
-  }) : this.gearRPMThresholds = gearRPMThresholds ?? {
+  }) : gearRPMThresholds = gearRPMThresholds ?? {
     1: 3000, // 1st gear
     2: 2700, // 2nd gear
     3: 2500, // 3rd gear

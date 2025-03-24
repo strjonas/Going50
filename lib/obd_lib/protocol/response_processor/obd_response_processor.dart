@@ -1,7 +1,6 @@
 import 'package:logging/logging.dart';
 import '../../models/obd_command.dart';
 import '../../models/obd_data.dart';
-import '../obd_constants.dart';
 import '../obd_data_parser.dart';
 
 /// Base class for OBD response processors

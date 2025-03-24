@@ -150,7 +150,7 @@ class ObdDataParser {
         }
         
         // If still no data, try a last resort approach for completely mangled responses
-        if (dataBytes.isEmpty && parts.length > 0) {
+        if (dataBytes.isEmpty && parts.isNotEmpty) {
           _logger.warning('Header not found in response, attempting last resort data extraction');
           _logger.fine('PARSER DEBUG - Last resort extraction, parts: $parts');
           
@@ -160,10 +160,10 @@ class ObdDataParser {
               try {
                 final byteValue = int.parse(part, radix: 16);
                 dataBytes.add(byteValue);
-                _logger.fine('PARSER DEBUG - Extracted byte: $byteValue (hex: ${part})');
+                _logger.fine('PARSER DEBUG - Extracted byte: $byteValue (hex: $part)');
               } catch (e) {
                 // Skip non-hex parts
-                _logger.fine('PARSER DEBUG - Skipped non-hex part: ${part}');
+                _logger.fine('PARSER DEBUG - Skipped non-hex part: $part');
               }
             }
           }

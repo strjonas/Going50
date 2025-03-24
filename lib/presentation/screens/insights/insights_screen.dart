@@ -273,7 +273,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

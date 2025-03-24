@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:going50/core_models/user_profile.dart';
+import 'package:going50/services/user/user_service.dart';
 
 /// Provider for user profile state
 ///
@@ -8,6 +9,9 @@ import 'package:going50/core_models/user_profile.dart';
 /// - Handling user preferences
 /// - Managing privacy settings
 class UserProvider extends ChangeNotifier {
+  // Dependencies
+  final UserService _userService;
+  
   // State
   UserProfile? _userProfile;
   bool _isAnonymous = true;
@@ -33,8 +37,17 @@ class UserProvider extends ChangeNotifier {
   Map<String, dynamic> get preferences => _preferences;
   
   /// Constructor
-  UserProvider() {
+  UserProvider(this._userService) {
     _loadUserProfile();
+    
+    // Listen for user profile changes
+    _userService.userProfileStream.listen((profile) {
+      if (profile != null) {
+        _userProfile = profile;
+        _isAnonymous = _userService.isAnonymous;
+        notifyListeners();
+      }
+    });
   }
   
   /// Load the user profile from storage
@@ -42,23 +55,12 @@ class UserProvider extends ChangeNotifier {
     _setLoading(true);
     
     try {
-      // TODO: Implement actual data loading from a user service when created
-      // For now, set a default anonymous profile
+      await _userService.initialize();
       
-      // Simulate loading delay
-      await Future.delayed(const Duration(milliseconds: 500));
+      _userProfile = _userService.currentUser;
+      _isAnonymous = _userService.isAnonymous;
       
-      _userProfile = UserProfile(
-        id: 'anonymous',
-        name: 'Anonymous User',
-        createdAt: DateTime.now(),
-        isPublic: false,
-        allowDataUpload: false,
-      );
-      
-      _isAnonymous = true;
-      
-      // Load default preferences
+      // Load preferences
       _loadPreferences();
       
       notifyListeners();
@@ -72,10 +74,9 @@ class UserProvider extends ChangeNotifier {
   /// Load user preferences
   Future<void> _loadPreferences() async {
     try {
-      // TODO: Implement actual preference loading from storage
-      
-      // Set default preferences for now
-      _preferences = {
+      // Get preferences from user profile for now
+      // This will be expanded when we implement the preferences service
+      _preferences = _userProfile?.preferences ?? {
         'notifications': {
           'trip_summary': true,
           'achievements': true,
@@ -115,11 +116,37 @@ class UserProvider extends ChangeNotifier {
       // Update the preference
       (_preferences[category] as Map<String, dynamic>)[key] = value;
       
-      // TODO: Save preferences to storage when user service is implemented
+      // TODO: Save preferences when preferences service is implemented
       
       notifyListeners();
     } catch (e) {
       _setError('Failed to update preference: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  /// Register a user (convert anonymous to registered)
+  Future<void> registerUser({
+    required String name,
+    required bool isPublic,
+    required bool allowDataUpload,
+  }) async {
+    _setLoading(true);
+    
+    try {
+      await _userService.registerUser(
+        name: name,
+        isPublic: isPublic,
+        allowDataUpload: allowDataUpload,
+      );
+      
+      _userProfile = _userService.currentUser;
+      _isAnonymous = _userService.isAnonymous;
+      
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to register user: $e');
     } finally {
       _setLoading(false);
     }
@@ -132,16 +159,13 @@ class UserProvider extends ChangeNotifier {
     _setLoading(true);
     
     try {
-      // Create updated profile
-      _userProfile = UserProfile(
-        id: _userProfile!.id,
-        name: name ?? _userProfile!.name,
-        createdAt: _userProfile!.createdAt,
-        isPublic: isPublic ?? _userProfile!.isPublic,
-        allowDataUpload: allowDataUpload ?? _userProfile!.allowDataUpload,
+      await _userService.updateProfile(
+        name: name,
+        isPublic: isPublic,
+        allowDataUpload: allowDataUpload,
       );
       
-      // TODO: Save profile to storage when user service is implemented
+      _userProfile = _userService.currentUser;
       
       notifyListeners();
     } catch (e) {
