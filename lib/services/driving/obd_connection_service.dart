@@ -12,6 +12,7 @@ import 'package:going50/services/driving/sensor_service.dart';
 
 /// A service that manages the connection to the OBD device and provides
 /// an interface for retrieving vehicle data.
+/// Falls back to sensor data if OBD connection is lost.
 class ObdConnectionService extends ChangeNotifier {
   final Logger _logger = Logger('ObdConnectionService');
   final ObdService _obdService;

@@ -62,8 +62,8 @@ void _registerExistingLibraries() {
   serviceLocator.registerLazySingleton<ObdService>(
     () => ObdService(isDebugMode: kDebugMode),
   );
-  
-  // Register Sensor service
+
+  // Register Sensor Service from lib 
   serviceLocator.registerLazySingleton<sensor_lib.SensorService>(
     () => sensor_lib.SensorService(isDebugMode: kDebugMode),
   );
