@@ -32,6 +32,9 @@ class AppColors {
   static const Color error = Color(0xFFE53935);
   static const Color info = Color(0xFF2196F3);
   
+  // Neutral colors
+  static const Color neutralGray = Color(0xFF9E9E9E);
+  
   // Eco-score gradient colors
   static const Color ecoScoreLow = Color(0xFFE53935); // Red
   static const Color ecoScoreMedium = Color(0xFFFFB300); // Amber
