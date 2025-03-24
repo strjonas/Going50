@@ -57,6 +57,7 @@ dependencies:
   # Utilities
   uuid: ^4.3.3
   logging: ^1.2.0
+  package_info_plus: ^8.3.0
   
   # Permissions
   permission_handler: ^11.3.0

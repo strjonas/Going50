@@ -52,7 +52,9 @@ The implementation is organized into logical phases, with each phase building up
 - Basic app widget created with theme
 - Existing libraries imported and building successfully
 
-### Day 2: Service Locator & Core Utilities
+### Day 2: Service Locator & Core Utilities ✅
+
+**Summary**: Implemented dependency injection using the get_it package with the service_locator.dart file to manage all service dependencies. Created core utilities in the utils directory: permission_utils.dart for handling different types of permissions needed for the app (Bluetooth, location, sensors), formatter_utils.dart for formatting various data types (dates, distances, fuel consumption, etc.), driving_utils.dart for eco-driving calculations (fuel consumption, CO2 emissions, aggressive driving detection, etc.), and device_utils.dart for detecting device capabilities (Bluetooth availability, battery status, etc.). All utilities are well-documented with comprehensive error handling and logging.
 
 **Objective:** Implement dependency injection and core utilities.
 
