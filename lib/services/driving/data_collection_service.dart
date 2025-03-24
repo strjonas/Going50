@@ -80,16 +80,24 @@ class DataCollectionService extends ChangeNotifier {
     _logger.info('Initializing data collection service');
     
     try {
-      // Initialize OBD connection service if not already done
+      // Try to initialize OBD connection service, but don't fail if it doesn't work
+      bool obdInitialized = false;
       if (!_obdConnectionService.isInitialized) {
-        final obdInitialized = await _obdConnectionService.initialize();
-        if (!obdInitialized) {
-          _setErrorMessage('Failed to initialize OBD connection service');
-          return false;
+        try {
+          obdInitialized = await _obdConnectionService.initialize();
+          if (!obdInitialized) {
+            _logger.warning('OBD connection service initialization failed, will use sensor fallback mode');
+            // Enable fallback mode when OBD is not available
+            _useFallbackMode = true;
+          }
+        } catch (e) {
+          _logger.warning('Error initializing OBD connection service: $e, will use sensor fallback mode');
+          // Enable fallback mode when OBD is not available
+          _useFallbackMode = true;
         }
       }
       
-      // Initialize sensor service if not already done
+      // Initialize sensor service - this is required
       if (!_sensorService.isInitialized) {
         final sensorInitialized = await _sensorService.initialize();
         if (!sensorInitialized) {
@@ -102,7 +110,7 @@ class DataCollectionService extends ChangeNotifier {
       _clearErrorMessage();
       notifyListeners();
       
-      _logger.info('Data collection service initialized successfully');
+      _logger.info('Data collection service initialized successfully. Using fallback mode: $_useFallbackMode');
       return true;
     } catch (e) {
       _setErrorMessage('Error initializing data collection service: $e');

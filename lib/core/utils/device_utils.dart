@@ -151,9 +151,18 @@ class DeviceUtils {
   /// Check if the device has all required sensors for collecting driving data
   static Future<bool> hasSensorCapabilities() async {
     try {
+      // In debug mode, always return true to allow testing
+      if (kDebugMode) {
+        _logger.info('Debug mode: Bypassing sensor capability check');
+        return true;
+      }
+      
       // Check for accelerometer and location services
       final hasAccelerometer = await hasGyroscope(); // Using gyroscope check as a proxy for sensors
       final hasLocation = await hasLocationServices();
+      
+      // Log the results
+      _logger.info('Sensor capabilities: accelerometer=$hasAccelerometer, location=$hasLocation');
       
       // Both are required for basic functionality
       return hasAccelerometer && hasLocation;

@@ -120,6 +120,16 @@ class DrivingProvider extends ChangeNotifier {
     }
   }
   
+  /// Force update notification (for debugging purposes)
+  void forceUpdate() {
+    notifyListeners();
+  }
+  
+  /// Force reinitialize all services (for troubleshooting)
+  Future<bool> forceReinitializeServices() async {
+    return await _drivingService.forceReinitializeServices();
+  }
+  
   /// Subscribe to streams from the driving service
   void _subscribeToStreams() {
     // Subscribe to driving events

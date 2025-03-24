@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/driving_provider.dart';
 import '../../widgets/common/buttons/primary_button.dart';
+import 'package:going50/services/permission_service.dart';
+import 'package:going50/services/service_locator.dart';
 
 /// A screen that guides users through OBD connection options.
 class ConnectionSetupScreen extends StatefulWidget {
@@ -24,6 +26,75 @@ class _ConnectionSetupScreenState extends State<ConnectionSetupScreen> {
   
   // Whether to show the OBD help dialog
   bool _showOBDHelp = false;
+  
+  // Permission service reference
+  late final PermissionService _permissionService;
+  
+  @override
+  void initState() {
+    super.initState();
+    _permissionService = serviceLocator<PermissionService>();
+  }
+
+  // Request permissions based on connection choice
+  Future<void> _requestPermissions(String option) async {
+    if (option == 'obd_adapter') {
+      // For OBD adapter, we need Bluetooth permissions
+      // First check if permissions are already granted
+      final hasBluetoothPermission = await _permissionService.areBluetoothPermissionsGranted();
+      
+      if (!hasBluetoothPermission) {
+        // Show explanation dialog first
+        if (mounted) {
+          await showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Bluetooth Permission'),
+              content: const Text(
+                'Going50 needs Bluetooth permission to connect to your OBD adapter. '
+                'This allows the app to read vehicle data for more accurate eco-driving analysis.'
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        // Request Bluetooth permissions
+        await _permissionService.requestBluetoothPermissions();
+      }
+    }
+    
+    // For both options, we need location permissions
+    final hasLocationPermission = await _permissionService.areLocationPermissionsGranted();
+    
+    if (!hasLocationPermission && mounted) {
+      // Show explanation dialog first
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Location Permission'),
+          content: const Text(
+            'Going50 needs location permission to track your trips and provide accurate eco-driving feedback. '
+            'This data stays on your device unless you choose to share it.'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      
+      // Request location permission
+      await _permissionService.requestLocationPermissions(background: false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +200,10 @@ class _ConnectionSetupScreenState extends State<ConnectionSetupScreen> {
                 text: 'Continue',
                 onPressed: _selectedOption == null
                     ? null
-                    : () {
+                    : () async {
+                        // Request appropriate permissions first
+                        await _requestPermissions(_selectedOption!);
+                        
                         // Set the connection choice in the provider
                         final drivingProvider = Provider.of<DrivingProvider>(
                           context, 

@@ -32,6 +32,9 @@ class StartTripButton extends StatelessWidget {
     // Determine if the button should be enabled
     bool isEnabled = drivingStatus == DrivingStatus.ready;
     
+    // Don't log during build - can cause issues with setState during build
+    // print('StartTripButton: status=$drivingStatus, isEnabled=$isEnabled, isRecording=$isRecording, isCollecting=${drivingProvider.isCollecting}, isObdConnected=${drivingProvider.isObdConnected}');
+    
     // Handle button press
     void onPressed() async {
       if (!isEnabled) {

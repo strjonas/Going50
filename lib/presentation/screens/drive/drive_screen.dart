@@ -7,6 +7,8 @@ import 'package:going50/presentation/screens/drive/components/connection_status_
 import 'package:going50/presentation/screens/drive/components/start_trip_button.dart';
 import 'package:going50/presentation/screens/drive/components/recent_trip_card.dart';
 import 'package:going50/core_models/trip.dart';
+import 'package:going50/services/service_locator.dart';
+import 'package:going50/services/permission_service.dart';
 
 /// DriveScreen is the main screen for the Drive tab.
 ///
@@ -138,69 +140,125 @@ class _DriveScreenState extends State<DriveScreen> {
     );
   }
   
-  /// Builds the action section with start trip button and audio toggle
-  Widget _buildActionSection(
-    BuildContext context, 
-    DrivingProvider drivingProvider,
-  ) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Start trip button
-          StartTripButton(
-            size: 100,
-            onBeforeStart: () {
-              // This would be used for any pre-trip setup, such as permission checks
-            },
-          ),
-          
-          const SizedBox(height: 24),
-          
-          // Device connection shortcut (if not connected)
-          if (!drivingProvider.isObdConnected)
-            TextButton.icon(
-              onPressed: () {
-                // TODO: Navigate to device connection screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Device connection not yet implemented'),
+  /// Builds the action section with Start Trip button
+  Widget _buildActionSection(BuildContext context, DrivingProvider drivingProvider) {
+    return SingleChildScrollView(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Start trip button
+            StartTripButton(
+              size: 100,
+              onBeforeStart: () {
+                // Show an explanation dialog about permissions
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Required Permissions'),
+                    content: const Text(
+                      'Going50 needs access to your location and motion sensors to track your trip. '
+                      'Bluetooth access may also be requested for OBD connectivity. '
+                      'These permissions are only used while you are actively recording a trip.'
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('OK'),
+                      ),
+                    ],
                   ),
                 );
               },
-              icon: const Icon(Icons.bluetooth),
-              label: const Text('Connect OBD Device'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.secondary,
-              ),
             ),
             
-          const SizedBox(height: 24),
-          
-          // Audio feedback toggle
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'Audio Feedback',
-                style: TextStyle(
-                  fontSize: 16,
+            const SizedBox(height: 16),
+            
+            // Troubleshooting button (DEBUG ONLY)
+            ElevatedButton(
+              onPressed: () async {
+                // Force reset permission first-time flag
+                final permissionService = serviceLocator<PermissionService>();
+                await permissionService.resetFirstTimeRequestFlag();
+                
+                // Request permissions again
+                await permissionService.requestLocationPermissions(background: false);
+                
+                // Show a loading indicator
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Reinitializing services...'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+                
+                // Force reinitialize services
+                await drivingProvider.forceReinitializeServices();
+                
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Services reinitialized. You can now try starting a trip.'),
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+              ),
+              child: const Text('TROUBLESHOOT'),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Device connection shortcut (if not connected)
+            if (!drivingProvider.isObdConnected)
+              TextButton.icon(
+                onPressed: () {
+                  // TODO: Navigate to device connection screen
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Device connection not yet implemented'),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.bluetooth),
+                label: const Text('Connect OBD Device'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.secondary,
                 ),
               ),
-              const SizedBox(width: 8),
-              Switch(
-                value: _audioFeedbackEnabled,
-                onChanged: (value) {
-                  setState(() {
-                    _audioFeedbackEnabled = value;
-                  });
-                  // TODO: Implement audio feedback toggle in driving provider
-                },
-                activeColor: AppColors.primary,
-              ),
-            ],
-          ),
-        ],
+              
+            const SizedBox(height: 24),
+            
+            // Audio feedback toggle
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Audio Feedback',
+                  style: TextStyle(
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Switch(
+                  value: _audioFeedbackEnabled,
+                  onChanged: (value) {
+                    setState(() {
+                      _audioFeedbackEnabled = value;
+                    });
+                    // TODO: Implement audio feedback toggle in driving provider
+                  },
+                  activeColor: AppColors.primary,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -24,6 +24,8 @@ class _ActiveDriveScreenState extends State<ActiveDriveScreen> with WidgetsBindi
   // Event notification display
   DrivingEvent? _currentEvent;
   Timer? _eventTimer;
+  // Track the last processed event to avoid duplicate notifications
+  DrivingEvent? _lastProcessedEvent;
   
   @override
   void initState() {
@@ -38,6 +40,11 @@ class _ActiveDriveScreenState extends State<ActiveDriveScreen> with WidgetsBindi
     
     // Set system UI to immersive mode during driving
     _setImmersiveMode();
+    
+    // Schedule a check for events after the first build is complete
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForNewEvents();
+    });
   }
 
   @override
@@ -67,22 +74,37 @@ class _ActiveDriveScreenState extends State<ActiveDriveScreen> with WidgetsBindi
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
   
+  void _checkForNewEvents() {
+    if (!mounted) return;
+    
+    final drivingProvider = Provider.of<DrivingProvider>(context, listen: false);
+    
+    if (drivingProvider.recentEvents.isNotEmpty && 
+        _lastProcessedEvent != drivingProvider.recentEvents.first) {
+      _lastProcessedEvent = drivingProvider.recentEvents.first;
+      _showEventNotification(_lastProcessedEvent!);
+    }
+  }
+
   void _showEventNotification(DrivingEvent event) {
-    setState(() {
-      _currentEvent = event;
-    });
-    
-    // Clear previous timer if it exists
-    _eventTimer?.cancel();
-    
-    // Set a timer to clear the notification after 3 seconds
-    _eventTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _currentEvent = null;
-        });
-      }
-    });
+    // Only call setState if we're not currently in build phase
+    if (mounted) {
+      setState(() {
+        _currentEvent = event;
+      });
+      
+      // Clear previous timer if it exists
+      _eventTimer?.cancel();
+      
+      // Set a timer to clear the notification after 3 seconds
+      _eventTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted) {
+          setState(() {
+            _currentEvent = null;
+          });
+        }
+      });
+    }
   }
   
   void _endTrip(BuildContext context) async {
@@ -108,11 +130,11 @@ class _ActiveDriveScreenState extends State<ActiveDriveScreen> with WidgetsBindi
   Widget build(BuildContext context) {
     return Consumer<DrivingProvider>(
       builder: (context, drivingProvider, child) {
-        // Listen for driving events
-        if (drivingProvider.recentEvents.isNotEmpty && 
-            _currentEvent != drivingProvider.recentEvents.first) {
-          _showEventNotification(drivingProvider.recentEvents.first);
-        }
+        // Instead of calling _showEventNotification directly in build,
+        // we schedule it for after this frame is complete
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _checkForNewEvents();
+        });
         
         return Scaffold(
           backgroundColor: Colors.black,

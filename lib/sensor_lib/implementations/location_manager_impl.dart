@@ -78,11 +78,12 @@ class LocationManagerImpl implements LocationManager {
       
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: config.locationAccuracy,
-        timeLimit: const Duration(seconds: 2) // Add a reasonable timeout
+        timeLimit: const Duration(seconds: 5) // Increase timeout to 5 seconds
       ).timeout(
-        const Duration(seconds: 2), // Add explicit timeout handling
+        const Duration(seconds: 5), // Increase timeout to 5 seconds
         onTimeout: () {
           _logger.warning('Timeout while getting position, using last known position');
+          // Return default position to avoid null
           return _lastPosition ?? Position(
             longitude: 0, 
             latitude: 0, 
@@ -134,7 +135,7 @@ class LocationManagerImpl implements LocationManager {
       final locationSettings = LocationSettings(
         accuracy: accuracy ?? config.locationAccuracy,
         distanceFilter: distanceFilter ?? config.locationDistanceFilter,
-        timeLimit: Duration(milliseconds: timeInterval ?? config.locationUpdateIntervalMs),
+        timeLimit: Duration(milliseconds: timeInterval ?? config.locationUpdateIntervalMs * 5), // Increase timeout 5x
       );
       
       _positionSubscription = Geolocator.getPositionStream(
@@ -142,6 +143,10 @@ class LocationManagerImpl implements LocationManager {
       ).listen((Position position) {
         _lastPosition = position;
         _positionController.add(position);
+      }, onError: (error) {
+        // Handle errors from the position stream
+        _logger.warning('Error in position stream: $error');
+        // Don't propagate errors to prevent app crashes
       });
     } catch (e) {
       _logger.severe('Error starting location collection: $e');

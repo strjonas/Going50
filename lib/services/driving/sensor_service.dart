@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:going50/core/utils/permission_utils.dart';
 import 'package:going50/core/utils/device_utils.dart';
 import 'package:going50/core_models/phone_sensor_data.dart';
 import 'package:going50/sensor_lib/sensor_service.dart' as sensor_lib;
+import 'package:going50/services/permission_service.dart';
+import 'package:going50/services/service_locator.dart';
 import 'package:logging/logging.dart';
 
 /// A service that manages phone sensors for collecting driving data when
@@ -11,6 +12,7 @@ import 'package:logging/logging.dart';
 class SensorService extends ChangeNotifier {
   final Logger _logger = Logger('SensorService');
   final sensor_lib.SensorService _sensorService;
+  late final PermissionService _permissionService;
   
   // Service state
   bool _isInitialized = false;
@@ -37,6 +39,9 @@ class SensorService extends ChangeNotifier {
   SensorService(this._sensorService) {
     _logger.info('SensorService initialized');
     
+    // Get the permission service
+    _permissionService = serviceLocator<PermissionService>();
+    
     // Subscribe to the sensor library's data stream
     _sensorService.dataStream.listen(_handleSensorData);
   }
@@ -49,12 +54,15 @@ class SensorService extends ChangeNotifier {
     
     try {
       // Check for required permissions
-      final hasPermissions = await PermissionUtils.checkSensorPermissions();
-      if (!hasPermissions) {
-        _logger.info('Requesting sensor permissions');
-        final permissionsGranted = await PermissionUtils.requestSensorPermissions();
+      final hasLocationPermission = await _permissionService.areLocationPermissionsGranted();
+      if (!hasLocationPermission) {
+        _logger.info('Requesting location permissions');
+        await _permissionService.requestLocationPermissions(background: false);
+        
+        // Check again if permissions were granted
+        final permissionsGranted = await _permissionService.areLocationPermissionsGranted();
         if (!permissionsGranted) {
-          _setErrorMessage('Required permissions not granted');
+          _setErrorMessage('Location permission not granted');
           return false;
         }
       }

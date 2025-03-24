@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:going50/core/utils/permission_utils.dart';
 import 'package:going50/core/utils/device_utils.dart';
 import 'package:going50/core_models/obd_II_data.dart';
 import 'package:going50/obd_lib/obd_service.dart';
 import 'package:going50/obd_lib/models/bluetooth_device.dart';
 import 'package:going50/obd_lib/models/obd_data.dart';
 import 'package:going50/obd_lib/protocol/obd_constants.dart';
+import 'package:going50/services/permission_service.dart';
+import 'package:going50/services/service_locator.dart';
 import 'package:logging/logging.dart';
 
 /// A service that manages the connection to the OBD device and provides
@@ -15,6 +16,7 @@ import 'package:logging/logging.dart';
 class ObdConnectionService extends ChangeNotifier {
   final Logger _logger = Logger('ObdConnectionService');
   final ObdService _obdService;
+  late final PermissionService _permissionService;
   
   // Connection state
   bool _isInitialized = false;
@@ -55,6 +57,7 @@ class ObdConnectionService extends ChangeNotifier {
   /// Constructor
   ObdConnectionService(this._obdService) {
     _logger.info('ObdConnectionService initialized');
+    _permissionService = serviceLocator<PermissionService>();
   }
   
   /// Initialize the OBD connection service
@@ -72,13 +75,34 @@ class ObdConnectionService extends ChangeNotifier {
       }
       
       // Check for required permissions
-      final hasPermissions = await PermissionUtils.checkDrivingPermissions();
-      if (!hasPermissions) {
-        _logger.info('Requesting driving permissions');
-        final permissionsGranted = await PermissionUtils.requestDrivingPermissions();
-        if (!permissionsGranted) {
-          _setErrorMessage('Required permissions not granted');
-          return false;
+      final hasBluetoothPermissions = await _permissionService.areBluetoothPermissionsGranted();
+      final hasLocationPermissions = await _permissionService.areLocationPermissionsGranted();
+      
+      if (!hasBluetoothPermissions || !hasLocationPermissions) {
+        _logger.info('Requesting Bluetooth and location permissions');
+        
+        // Request Bluetooth permissions
+        if (!hasBluetoothPermissions) {
+          await _permissionService.requestBluetoothPermissions();
+          
+          // Check again if permissions were granted
+          final bluetoothGranted = await _permissionService.areBluetoothPermissionsGranted();
+          if (!bluetoothGranted) {
+            _setErrorMessage('Bluetooth permissions required for OBD connection');
+            return false;
+          }
+        }
+        
+        // Request location permissions
+        if (!hasLocationPermissions) {
+          await _permissionService.requestLocationPermissions(background: false);
+          
+          // Check again if permissions were granted
+          final locationGranted = await _permissionService.areLocationPermissionsGranted();
+          if (!locationGranted) {
+            _setErrorMessage('Location permission required for OBD connection');
+            return false;
+          }
         }
       }
       

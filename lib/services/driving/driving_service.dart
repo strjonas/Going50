@@ -9,6 +9,8 @@ import 'package:going50/services/driving/sensor_service.dart';
 import 'package:going50/services/driving/data_collection_service.dart';
 import 'package:going50/services/driving/analytics_service.dart';
 import 'package:going50/services/driving/trip_service.dart';
+import 'package:going50/services/permission_service.dart';
+import 'package:going50/services/service_locator.dart';
 
 // Model imports
 import 'package:going50/core_models/trip.dart';
@@ -48,6 +50,7 @@ class DrivingService extends ChangeNotifier {
   final DataCollectionService _dataCollectionService;
   final AnalyticsService _analyticsService;
   final TripService _tripService;
+  late final PermissionService _permissionService;
   
   // Service state
   bool _isInitialized = false;
@@ -79,6 +82,7 @@ class DrivingService extends ChangeNotifier {
     this._tripService,
   ) {
     _logger.info('DrivingService created');
+    _permissionService = serviceLocator<PermissionService>();
     _setupEventListeners();
     _initializeServices();
   }
@@ -121,29 +125,27 @@ class DrivingService extends ChangeNotifier {
     _logger.info('Initializing all driving services');
     
     try {
-      // Initialize sensor service
+      // Initialize sensor service - this is the core requirement
       final sensorInitialized = await _sensorService.initialize();
       if (!sensorInitialized) {
         _setError('Failed to initialize sensor service');
         return false;
       }
       
-      // Initialize data collection service
+      // Initialize data collection service - will use fallback mode if OBD is not available
       final dataCollectionInitialized = await _dataCollectionService.initialize();
-      if (!dataCollectionInitialized) {
-        _setError('Failed to initialize data collection service');
-        return false;
-      }
+      // We don't consider OBD failures as critical errors that prevent initialization
+      // since we can still collect data using phone sensors
       
-      // Mark as initialized
-      _isInitialized = true;
+      // Mark as initialized even if data collection had OBD errors
+      _isInitialized = dataCollectionInitialized;
       
       // Update driving status
       _updateDrivingStatus();
       
-      _logger.info('All driving services initialized successfully');
+      _logger.info('All driving services initialized successfully. OBD connected: ${_obdConnectionService.isConnected}');
       notifyListeners();
-      return true;
+      return dataCollectionInitialized;
     } catch (e) {
       _setError('Error initializing services: $e');
       _logger.severe('Error initializing services', e);
@@ -153,17 +155,26 @@ class DrivingService extends ChangeNotifier {
   
   /// Updates the driving status based on all services' states
   void _updateDrivingStatus() {
+    DrivingStatus oldStatus = _drivingStatus;
+    
     if (!_isInitialized) {
       _drivingStatus = DrivingStatus.notReady;
+      _logger.info('Setting driving status to notReady because service is not initialized');
     } else if (_errorMessage != null) {
       _drivingStatus = DrivingStatus.error;
+      _logger.info('Setting driving status to error due to: $_errorMessage');
     } else if (_tripService.currentTrip != null) {
       _drivingStatus = DrivingStatus.recording;
+      _logger.info('Setting driving status to recording because a trip is in progress');
     } else {
       _drivingStatus = DrivingStatus.ready;
+      _logger.info('Setting driving status to ready - all conditions met');
     }
     
-    _logger.info('Driving status updated to: $_drivingStatus');
+    if (oldStatus != _drivingStatus) {
+      _logger.info('Driving status updated from $oldStatus to: $_drivingStatus');
+    }
+    
     notifyListeners();
   }
   
@@ -305,7 +316,40 @@ class DrivingService extends ChangeNotifier {
     }
     
     try {
-      // First ensure analytics is initialized
+      // First check for required permissions
+      bool hasLocationPermission = await _permissionService.areLocationPermissionsGranted();
+      if (!hasLocationPermission) {
+        _logger.info('Requesting location permissions');
+        await _permissionService.requestLocationPermissions();
+        
+        // Check again if permissions were granted
+        hasLocationPermission = await _permissionService.areLocationPermissionsGranted();
+        if (!hasLocationPermission) {
+          _setError('Location permission required to start trip');
+          return null;
+        }
+      }
+      
+      // If using OBD, check for bluetooth permissions 
+      if (_obdConnectionService.isConnected) {
+        bool hasBluetoothPermission = await _permissionService.areBluetoothPermissionsGranted();
+        if (!hasBluetoothPermission) {
+          _logger.info('Requesting Bluetooth permissions');
+          await _permissionService.requestBluetoothPermissions();
+          
+          // Check again if permissions were granted
+          hasBluetoothPermission = await _permissionService.areBluetoothPermissionsGranted();
+          if (!hasBluetoothPermission) {
+            _setError('Bluetooth permission required to use OBD device');
+            return null;
+          }
+        }
+      }
+      
+      // Check for activity/motion sensor permissions
+      await _permissionService.requestActivityRecognitionPermission();
+      
+      // Then ensure analytics is initialized
       await _analyticsService.initialize();
       
       // Then ensure data collection is started
@@ -419,7 +463,25 @@ class DrivingService extends ChangeNotifier {
     return await _tripService.getTrip(tripId);
   }
   
-  /// Dispose method to clean up resources
+  /// Force reinitialize all services
+  /// This is useful for troubleshooting
+  Future<bool> forceReinitializeServices() async {
+    _logger.info('Force reinitializing all driving services');
+    
+    // Reset error state
+    _errorMessage = null;
+    
+    // Reset initialization flag
+    _isInitialized = false;
+    
+    // Notify listeners of state change
+    notifyListeners();
+    
+    // Reinitialize services
+    return await _initializeServices();
+  }
+  
+  /// Clean up resources
   @override
   void dispose() {
     _logger.info('Disposing DrivingService');

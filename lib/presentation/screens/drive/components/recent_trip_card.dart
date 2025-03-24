@@ -65,6 +65,7 @@ class RecentTripCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 children: [
@@ -126,7 +127,7 @@ class RecentTripCard extends StatelessWidget {
                 ],
               ),
               
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               
               // Trip details
               Row(
@@ -169,7 +170,7 @@ class RecentTripCard extends StatelessWidget {
                 ],
               ),
               
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               
               // Savings section
               Row(
