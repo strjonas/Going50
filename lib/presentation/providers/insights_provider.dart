@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';  // Added for DateTimeRange
 import 'package:going50/core_models/trip.dart';
 import 'package:going50/core_models/driver_performance_metrics.dart';
 import 'package:going50/services/driving/driving_service.dart';
+import 'package:going50/services/driving/performance_metrics_service.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
 
@@ -15,6 +17,7 @@ import 'dart:math' as math;
 /// - Providing access to historical driving data for visualization
 class InsightsProvider extends ChangeNotifier {
   final DrivingService _drivingService;
+  final PerformanceMetricsService _metricsService;
   
   // State
   List<Trip> _recentTrips = [];
@@ -31,9 +34,12 @@ class InsightsProvider extends ChangeNotifier {
   Map<String, double> _fuelSavings = {};
   Map<String, double> _co2Reduction = {};
   Map<String, double> _moneySavings = {};
+
+  // Cache for performance metrics service results
+  Map<String, PerformanceMetrics> _performanceMetricsCache = {};
   
   /// Constructor
-  InsightsProvider(this._drivingService) {
+  InsightsProvider(this._drivingService, this._metricsService) {
     _loadRecentTrips();
     _loadPerformanceMetrics();
   }
@@ -141,39 +147,173 @@ class InsightsProvider extends ChangeNotifier {
   
   /// Load metrics for a specific time period
   Future<void> _loadMetricsForPeriod(String period) async {
-    final dateRange = _getDateRangeForPeriod(period);
-    
     try {
-      // Normally we would get this from a service, but for now we'll create mock data
-      // based on the trips in the date range
-      final tripsInRange = filterTripsByDateRange(dateRange.start, dateRange.end);
+      // Get performance metrics from the service
+      PerformanceMetrics metrics;
       
-      if (tripsInRange.isEmpty) {
-        // No trips in this period, generate mock data
-        _currentMetrics = _generateMockMetrics(period);
+      // Check if we have cached metrics
+      if (_performanceMetricsCache.containsKey(period)) {
+        metrics = _performanceMetricsCache[period]!;
       } else {
-        // Generate metrics based on actual trips
-        _currentMetrics = _calculateMetricsFromTrips(tripsInRange, period);
+        // Get metrics from the service based on the time period
+        switch (period) {
+          case 'day':
+            metrics = await _metricsService.getDailyMetrics(DateTime.now());
+            break;
+          case 'week':
+            metrics = await _metricsService.getWeeklyMetrics(DateTime.now());
+            break;
+          case 'month':
+            metrics = await _metricsService.getMonthlyMetrics(DateTime.now());
+            break;
+          case 'year':
+            metrics = await _metricsService.getYearlyMetrics(DateTime.now());
+            break;
+          default:
+            // Default to weekly metrics
+            metrics = await _metricsService.getWeeklyMetrics(DateTime.now());
+        }
+        
+        // Cache the metrics
+        _performanceMetricsCache[period] = metrics;
       }
       
-      // Update savings calculations
-      _calculateSavings(period);
+      // Convert PerformanceMetrics to DriverPerformanceMetrics
+      _currentMetrics = _convertToDriverPerformanceMetrics(metrics, period);
+      
+      // Update savings calculations based on the performance metrics
+      final projectionData = _metricsService.calculateProjectedSavings(
+        metrics, 
+        period == 'day' ? 1 : period == 'week' ? 4 : period == 'month' ? 12 : 52
+      );
+      
+      _fuelSavings[period] = projectionData['fuelSavingsL'] ?? 0.0;
+      _moneySavings[period] = projectionData['moneySavingsUSD'] ?? 0.0;
+      _co2Reduction[period] = projectionData['co2SavingsKg'] ?? 0.0;
+      
     } catch (e) {
       _setError('Failed to load metrics for $period: $e');
+      
+      // Fall back to mock metrics if there's an error
+      _currentMetrics = _generateMockMetrics(period);
+      _calculateSavings(period);
     }
+  }
+  
+  /// Convert PerformanceMetrics to DriverPerformanceMetrics
+  DriverPerformanceMetrics _convertToDriverPerformanceMetrics(
+    PerformanceMetrics metrics,
+    String period
+  ) {
+    // Extract improvement tips from JSON
+    List<String> improvementTips = [];
+    try {
+      final tipsData = jsonDecode(metrics.improvementTipsJson);
+      if (tipsData['tips'] != null) {
+        for (var tip in tipsData['tips']) {
+          improvementTips.add('${tip['area']}: ${tip['tip']} ${tip['benefit']}');
+        }
+      }
+    } catch (e) {
+      improvementTips = ['Try to drive more efficiently to improve your eco-score.'];
+    }
+    
+    return DriverPerformanceMetrics(
+      generatedAt: metrics.generatedAt,
+      periodStart: metrics.periodStart,
+      periodEnd: metrics.periodEnd,
+      totalTrips: metrics.totalTrips,
+      totalDistanceKm: metrics.totalDistanceKm,
+      totalDrivingTimeMinutes: metrics.totalDrivingTimeMinutes,
+      averageSpeedKmh: metrics.totalDrivingTimeMinutes > 0 
+        ? (metrics.totalDistanceKm / metrics.totalDrivingTimeMinutes) * 60 
+        : 0,
+      estimatedFuelSavingsL: _fuelSavings[period],
+      estimatedCO2ReductionKg: _co2Reduction[period],
+      calmDrivingScore: metrics.calmDrivingScore.round(),
+      speedOptimizationScore: metrics.speedOptimizationScore.round(),
+      idlingScore: metrics.idlingScore.round(),
+      shortDistanceScore: 70, // Not directly tracked in PerformanceMetrics
+      rpmManagementScore: metrics.steadySpeedScore.round(),
+      stopManagementScore: 75, // Not directly tracked in PerformanceMetrics
+      followDistanceScore: 80, // Not directly tracked in PerformanceMetrics
+      overallEcoScore: metrics.overallScore.round(),
+      improvementRecommendations: improvementTips,
+    );
   }
   
   /// Load trend data for charts
   Future<void> _loadTrends() async {
-    _ecoScoreTrends = {
-      'day': _generateHourlyTrend(),
-      'week': _generateDailyTrend(),
-      'month': _generateWeeklyTrend(),
-      'year': _generateMonthlyTrend(),
-    };
+    try {
+      // Load trend data from the metrics service
+      // For each time period, we need a different interval and date range
+      
+      final now = DateTime.now();
+      
+      // Daily trend (hourly intervals for the current day)
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final dayTrend = await _metricsService.getTrendData(
+        'overallScore',
+        startOfDay,
+        now,
+        interval: 'daily',
+      );
+      
+      // Weekly trend (daily intervals for the current week)
+      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+      final weekTrend = await _metricsService.getTrendData(
+        'overallScore',
+        startOfWeek,
+        now,
+        interval: 'daily',
+      );
+      
+      // Monthly trend (weekly intervals for the current month)
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final monthTrend = await _metricsService.getTrendData(
+        'overallScore',
+        startOfMonth,
+        now,
+        interval: 'weekly',
+      );
+      
+      // Yearly trend (monthly intervals for the current year)
+      final startOfYear = DateTime(now.year, 1, 1);
+      final yearTrend = await _metricsService.getTrendData(
+        'overallScore',
+        startOfYear,
+        now,
+        interval: 'monthly',
+      );
+      
+      // Convert trend data to lists
+      _ecoScoreTrends = {
+        'day': _convertTrendMapToList(dayTrend),
+        'week': _convertTrendMapToList(weekTrend),
+        'month': _convertTrendMapToList(monthTrend),
+        'year': _convertTrendMapToList(yearTrend),
+      };
+    } catch (e) {
+      // Fall back to generated trends if there's an error
+      _ecoScoreTrends = {
+        'day': _generateHourlyTrend(),
+        'week': _generateDailyTrend(),
+        'month': _generateWeeklyTrend(),
+        'year': _generateMonthlyTrend(),
+      };
+    }
   }
   
-  /// Calculate savings for the given period
+  /// Convert trend map to list
+  List<double> _convertTrendMapToList(Map<DateTime, double> trendMap) {
+    // Sort the dates
+    final sortedDates = trendMap.keys.toList()..sort();
+    
+    // Create list of values in order
+    return sortedDates.map((date) => trendMap[date] ?? 0.0).toList();
+  }
+  
+  /// Calculate savings for the given period (legacy method, used as fallback)
   void _calculateSavings(String period) {
     if (_currentMetrics == null) return;
     
@@ -220,7 +360,7 @@ class InsightsProvider extends ChangeNotifier {
     }
   }
   
-  /// Generate mock metrics for a period
+  /// Generate mock metrics for a period (used as fallback if services fail)
   DriverPerformanceMetrics _generateMockMetrics(String period) {
     final dateRange = _getDateRangeForPeriod(period);
     
@@ -254,222 +394,64 @@ class InsightsProvider extends ChangeNotifier {
     );
   }
   
-  /// Calculate metrics from actual trips
-  DriverPerformanceMetrics _calculateMetricsFromTrips(List<Trip> trips, String period) {
-    final dateRange = _getDateRangeForPeriod(period);
-    
-    double totalDistanceKm = 0;
-    double totalDrivingTimeMinutes = 0;
-    double totalSpeed = 0;
-    int speedReadingCount = 0;
-    int totalIdlingEvents = 0;
-    int totalAggressiveAccEvents = 0;
-    int totalHardBrakingEvents = 0;
-    int totalExcessiveSpeedEvents = 0;
-    int totalStopEvents = 0;
-    
-    for (final trip in trips) {
-      totalDistanceKm += trip.distanceKm ?? 0;
-      
-      if (trip.startTime != null && trip.endTime != null) {
-        totalDrivingTimeMinutes += trip.endTime!.difference(trip.startTime).inMinutes.toDouble();
-      }
-      
-      if (trip.averageSpeedKmh != null) {
-        totalSpeed += trip.averageSpeedKmh!;
-        speedReadingCount++;
-      }
-      
-      // Get events from trip.toJson() since they aren't directly accessible
-      final tripJson = trip.toJson();
-      totalIdlingEvents += tripJson['idlingEvents'] as int? ?? 0;
-      totalAggressiveAccEvents += tripJson['aggressiveAccelerationEvents'] as int? ?? 0;
-      totalHardBrakingEvents += tripJson['hardBrakingEvents'] as int? ?? 0;
-      totalExcessiveSpeedEvents += tripJson['excessiveSpeedEvents'] as int? ?? 0;
-      totalStopEvents += tripJson['stopEvents'] as int? ?? 0;
-    }
-    
-    final double averageSpeedKmh = speedReadingCount > 0 ? (totalSpeed / speedReadingCount).toDouble() : 0.0;
-    
-    // Calculate scores based on events
-    final calmDrivingScore = _calculateScoreFromEvents(totalAggressiveAccEvents + totalHardBrakingEvents, trips.length);
-    final idlingScore = _calculateScoreFromEvents(totalIdlingEvents, trips.length);
-    final speedScore = _calculateScoreFromEvents(totalExcessiveSpeedEvents, trips.length);
-    final stopScore = _calculateScoreFromEvents(totalStopEvents, trips.length);
-    
-    // Other scores would normally use more complex logic but we'll use defaults
-    const rpmScore = 75;
-    const followDistanceScore = 82;
-    const shortTripScore = 68;
-    
-    // Overall score is the average of the component scores
-    final overallScore = ((calmDrivingScore + idlingScore + speedScore + stopScore + rpmScore + followDistanceScore + shortTripScore) / 7).round();
-    
-    // Calculate estimated savings
-    // Average car uses 8L/100km, we'll say 10% improvement from eco-driving
-    final estimatedFuelSavingsL = totalDistanceKm * 0.08 * 0.1;
-    // 2.3kg CO2 per liter of fuel
-    final estimatedCO2ReductionKg = estimatedFuelSavingsL * 2.3;
-    
-    return DriverPerformanceMetrics(
-      generatedAt: DateTime.now(),
-      periodStart: dateRange.start,
-      periodEnd: dateRange.end,
-      totalTrips: trips.length,
-      totalDistanceKm: totalDistanceKm,
-      totalDrivingTimeMinutes: totalDrivingTimeMinutes,
-      averageSpeedKmh: averageSpeedKmh,
-      estimatedFuelSavingsL: estimatedFuelSavingsL,
-      estimatedCO2ReductionKg: estimatedCO2ReductionKg,
-      calmDrivingScore: calmDrivingScore,
-      speedOptimizationScore: speedScore,
-      idlingScore: idlingScore,
-      shortDistanceScore: shortTripScore,
-      rpmManagementScore: rpmScore,
-      stopManagementScore: stopScore,
-      followDistanceScore: followDistanceScore,
-      overallEcoScore: overallScore,
-      improvementRecommendations: _generateRecommendations([
-        calmDrivingScore,
-        speedScore,
-        idlingScore,
-        shortTripScore,
-        rpmScore,
-        stopScore,
-        followDistanceScore,
-      ]),
-    );
+  // The following methods filter trips and generate mock trend data
+  // We keep them as fallbacks for when the service is unavailable
+
+  /// Filter trips by date range
+  List<Trip> filterTripsByDateRange(DateTime start, DateTime end) {
+    return _recentTrips.where((trip) {
+      return trip.startTime.isAfter(start) && 
+             (trip.endTime?.isBefore(end) ?? false);
+    }).toList();
   }
   
-  /// Calculate a score based on event count and trip count
-  int _calculateScoreFromEvents(int eventCount, int tripCount) {
-    if (tripCount == 0) return 75; // Default
-    
-    // Events per trip ratio
-    final ratio = eventCount / tripCount;
-    
-    // Score decreases as events increase
-    if (ratio < 0.5) return 90;
-    if (ratio < 1.0) return 80;
-    if (ratio < 2.0) return 70;
-    if (ratio < 3.0) return 60;
-    if (ratio < 5.0) return 50;
-    return 40;
-  }
-  
-  /// Generate recommendations based on scores
-  List<String> _generateRecommendations(List<int> scores) {
-    final recommendations = <String>[];
-    
-    if (scores[0] < 70) {
-      recommendations.add('Avoid aggressive acceleration and braking to improve your calm driving score');
-    }
-    
-    if (scores[1] < 70) {
-      recommendations.add('Maintain a consistent speed on highways to optimize fuel efficiency');
-    }
-    
-    if (scores[2] < 70) {
-      recommendations.add('Turn off your engine when stopped for more than 30 seconds to reduce idling');
-    }
-    
-    if (scores[3] < 70) {
-      recommendations.add('Try to combine short trips to improve your trip planning score');
-    }
-    
-    if (scores[4] < 70) {
-      recommendations.add('Shift gears earlier to maintain optimal RPM range for your vehicle');
-    }
-    
-    if (scores[5] < 70) {
-      recommendations.add('Anticipate traffic flow to reduce unnecessary stopping and starting');
-    }
-    
-    if (scores[6] < 70) {
-      recommendations.add('Keep a safe following distance to maintain steady speed and reduce braking');
-    }
-    
-    // If all scores are good or we didn't add many recommendations
-    if (recommendations.isEmpty || recommendations.length < 2) {
-      recommendations.add('Great job! Continue your eco-driving habits to maximize savings');
-    }
-    
-    return recommendations;
-  }
-  
-  /// Generate hourly trend data for 'day' view
+  /// Generate hourly trend data for the day view (fallback)
   List<double> _generateHourlyTrend() {
-
-    final random = DateTime.now().millisecondsSinceEpoch % 100;
-    final double baseScore = 60.0 + (random % 25);
-    final hourTrends = <double>[];
+    // Create fixed mock data to avoid type conversion issues
+    final baseValue = 65.0 + (DateTime.now().hour % 10);
+    List<double> trend = [];
     
-    final now = DateTime.now();
-    final hourOfDay = now.hour;
-    
-    // Generate data for the past 24 hours, with more recent hours having actual data
-    for (var i = 0; i < 24; i++) {
-      if (i > hourOfDay) {
-        // Future hours don't have data
-        hourTrends.add(0.0);
-      } else {
-        // Past hours have data with small variations
-        final double hourVariation = (i - 12) * (i - 12) / 8.0;
-        final double variation = (random % 10 - 5).toDouble();
-        final double score = baseScore + hourVariation + variation;
-        hourTrends.add(score.clamp(0.0, 100.0));
+    for (int i = 0; i < 24; i++) {
+      if (i <= DateTime.now().hour) {
+        // Only include hours up to the current hour
+        final variation = math.sin(i / 24 * math.pi * 2) * 10;
+        trend.add(baseValue + variation);
       }
     }
     
-    return hourTrends;
-
+    return trend;
   }
   
-  /// Generate daily trend data for 'week' view
+  /// Generate daily trend data for the week view (fallback)
   List<double> _generateDailyTrend() {
-    final random = DateTime.now().millisecondsSinceEpoch % 100;
-    final double baseScore = 60.0 + (random % 25);
-    final dailyTrends = <double>[];
-    
-    final now = DateTime.now();
-    final dayOfWeek = now.weekday % 7; // 0 = Sunday, 1 = Monday, etc.
-    
-    // Generate data for the past 7 days
-    for (var i = 0; i < 7; i++) {
-      if (i > dayOfWeek) {
-        // Future days don't have data
-        dailyTrends.add(0.0);
-      } else {
-        // Apply a slight upward trend to show improvement
-        final double improvement = i * 0.8;
-        final double variation = (random % 16 - 8) / 2.0;
-        final double score = baseScore + improvement + variation;
-        dailyTrends.add(score.clamp(0.0, 100.0));
-      }
-    }
-    
-    return dailyTrends;
-
-  }
-  
-  /// Generate weekly trend data for 'month' view
-  List<double> _generateWeeklyTrend() {
     // Create fixed mock data to avoid type conversion issues
     return [
-      70.0, 74.0, 78.0, 82.0, 0.0
-    ];
+      65.0, 68.0, 72.0, 70.0, 75.0, 78.0, 80.0
+    ].sublist(0, math.min(7, DateTime.now().weekday + 1));
   }
   
-  /// Generate monthly trend data for 'year' view
+  /// Generate weekly trend data for the month view (fallback)
+  List<double> _generateWeeklyTrend() {
+    // Create fixed mock data to avoid type conversion issues
+    final weekOfMonth = (DateTime.now().day / 7).ceil();
+    return [
+      67.0, 70.0, 73.0, 75.0, 78.0
+    ].sublist(0, math.min(5, weekOfMonth));
+  }
+  
+  /// Generate monthly trend data for the year view (fallback)
   List<double> _generateMonthlyTrend() {
     // Create fixed mock data to avoid type conversion issues
     return [
       65.0, 67.0, 70.0, 72.0, 68.0, 70.0, 75.0, 78.0, 80.0, 82.0, 84.0, 85.0
-    ];
+    ].sublist(0, DateTime.now().month);
   }
   
   /// Refresh insights data
   Future<void> refreshInsights() async {
+    // Clear caches
+    _performanceMetricsCache.clear();
+    
     await _loadRecentTrips();
     await _loadPerformanceMetrics();
   }
@@ -490,6 +472,22 @@ class InsightsProvider extends ChangeNotifier {
       
       notifyListeners();
     }
+  }
+  
+  // Helper methods to set loading state and errors
+  
+  void _setLoading(bool isLoading) {
+    _isLoading = isLoading;
+    notifyListeners();
+  }
+  
+  void _setError(String message) {
+    _errorMessage = message;
+    notifyListeners();
+  }
+  
+  void _clearError() {
+    _errorMessage = null;
   }
   
   /// Refresh trip data
@@ -544,84 +542,18 @@ class InsightsProvider extends ChangeNotifier {
   }
   
   /// Search trips by keyword
-  Future<List<Trip>> searchTrips(String keyword) async {
-    if (keyword.isEmpty) {
-      return _recentTrips;
-    }
+  List<Trip> searchTrips(String query) {
+    if (query.isEmpty) return _recentTrips;
     
-    keyword = keyword.toLowerCase();
+    final lowercaseQuery = query.toLowerCase();
     
     return _recentTrips.where((trip) {
-      // Check trip date in string format
-      final tripDate = trip.startTime.toString().toLowerCase();
-      if (tripDate.contains(keyword)) {
-        return true;
-      }
+      final date = DateFormat.yMMMd().format(trip.startTime);
+      final time = DateFormat.jm().format(trip.startTime);
       
-      // In the future, more fields could be searched here
-      return false;
+      return date.toLowerCase().contains(lowercaseQuery) ||
+             time.toLowerCase().contains(lowercaseQuery) ||
+             (trip.distanceKm?.toString() ?? '').contains(lowercaseQuery);
     }).toList();
-  }
-  
-  /// Filter trips by date range
-  List<Trip> filterTripsByDateRange(DateTime start, DateTime end) {
-    return _recentTrips.where((trip) {
-      return trip.startTime.isAfter(start) && 
-             trip.startTime.isBefore(end);
-    }).toList();
-  }
-  
-  /// Calculate average eco-score for a given time period
-  /// Note: We have to use 0 as a default since eco-score comes from the database
-  /// but isn't defined directly in the Trip model class
-  double calculateAverageEcoScore(List<Trip> trips) {
-    if (trips.isEmpty) return 0.0;
-    
-    double totalScore = 0.0;
-    int tripCount = 0;
-    
-    for (final trip in trips) {
-      // Access the eco-score from trip.toJson() since it's stored in the database
-      // but not directly accessible as a property in the Trip class
-      final ecoScore = trip.toJson()['ecoScore'] as int?;
-      if (ecoScore != null) {
-        totalScore += ecoScore.toDouble();
-        tripCount++;
-      }
-    }
-    
-    return tripCount > 0 ? totalScore / tripCount : 0.0;
-  }
-  
-  /// Calculate total distance for a given time period
-  double calculateTotalDistance(List<Trip> trips) {
-    if (trips.isEmpty) return 0.0;
-    
-    double totalDistance = 0.0;
-    
-    for (final trip in trips) {
-      if (trip.distanceKm != null) {
-        totalDistance += trip.distanceKm!;
-      }
-    }
-    
-    return totalDistance;
-  }
-  
-  /// Set loading state
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
-  }
-  
-  /// Set error message
-  void _setError(String message) {
-    _errorMessage = message;
-    notifyListeners();
-  }
-  
-  /// Clear error message
-  void _clearError() {
-    _errorMessage = null;
   }
 } 

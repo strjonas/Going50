@@ -6,6 +6,7 @@ import 'core/constants/app_constants.dart';
 import 'navigation/tab_navigator.dart';
 import 'navigation/app_router.dart';
 import 'services/driving/driving_service.dart';
+import 'services/driving/performance_metrics_service.dart';
 import 'services/service_locator.dart';
 import 'presentation/providers/driving_provider.dart';
 import 'presentation/providers/insights_provider.dart';
@@ -62,7 +63,10 @@ class _AppState extends State<App> {
         ChangeNotifierProvider(
           create: (_) => DrivingProvider(serviceLocator<DrivingService>())),
         ChangeNotifierProvider(
-          create: (_) => InsightsProvider(serviceLocator<DrivingService>())),
+          create: (_) => InsightsProvider(
+            serviceLocator<DrivingService>(),
+            serviceLocator<PerformanceMetricsService>(),
+          )),
         ChangeNotifierProvider(
           create: (_) => UserProvider()),
         ChangeNotifierProvider(
