@@ -13,6 +13,7 @@ import 'package:going50/services/driving/driving_service.dart';
 import 'package:going50/services/driving/performance_metrics_service.dart';
 import 'package:going50/services/user/user_service.dart';
 import 'package:going50/services/user/preferences_service.dart';
+import 'package:going50/services/user/privacy_service.dart';
 import 'package:logging/logging.dart';
 
 /// Global instance of the service locator
@@ -151,6 +152,13 @@ void _registerServices() {
   // Register Preferences Service
   serviceLocator.registerLazySingleton<PreferencesService>(
     () => PreferencesService(
+      serviceLocator<DataStorageManager>(),
+    ),
+  );
+  
+  // Register Privacy Service
+  serviceLocator.registerLazySingleton<PrivacyService>(
+    () => PrivacyService(
       serviceLocator<DataStorageManager>(),
     ),
   );
