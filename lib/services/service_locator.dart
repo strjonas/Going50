@@ -8,6 +8,7 @@ import 'package:going50/services/driving/obd_connection_service.dart';
 import 'package:going50/services/driving/sensor_service.dart';
 import 'package:going50/services/driving/data_collection_service.dart';
 import 'package:going50/services/driving/analytics_service.dart';
+import 'package:going50/services/driving/trip_service.dart';
 import 'package:logging/logging.dart';
 
 /// Global instance of the service locator
@@ -114,6 +115,13 @@ void _registerServices() {
     ),
   );
   
+  // Register Trip Service
+  serviceLocator.registerLazySingleton<TripService>(
+    () => TripService(
+      serviceLocator<DataStorageManager>(),
+    ),
+  );
+  
   // Additional services will be registered here as they are implemented
 }
 
@@ -122,5 +130,10 @@ void _connectServices() {
   // Connect Analytics Service with Data Collection Service
   serviceLocator<DataCollectionService>().setAnalyticsService(
     serviceLocator<AnalyticsService>()
+  );
+  
+  // Connect Trip Service with Data Collection Service
+  serviceLocator<DataCollectionService>().setTripService(
+    serviceLocator<TripService>()
   );
 } 

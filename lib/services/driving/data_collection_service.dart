@@ -7,6 +7,7 @@ import 'package:going50/core_models/phone_sensor_data.dart';
 import 'package:going50/services/driving/obd_connection_service.dart';
 import 'package:going50/services/driving/sensor_service.dart';
 import 'package:going50/services/driving/analytics_service.dart';
+import 'package:going50/services/driving/trip_service.dart';
 import 'package:logging/logging.dart';
 
 /// A service that coordinates collection of driving data from OBD and sensors.
@@ -24,6 +25,7 @@ class DataCollectionService extends ChangeNotifier {
   final SensorService _sensorService;
   final EcoDrivingManager _ecoDrivingManager;
   AnalyticsService? _analyticsService; // Optional dependency
+  TripService? _tripService; // Optional dependency
   
   // Service state
   bool _isInitialized = false;
@@ -81,6 +83,12 @@ class DataCollectionService extends ChangeNotifier {
     _logger.info('Analytics service registered with data collection service');
   }
   
+  /// Set the trip service
+  void setTripService(TripService tripService) {
+    _tripService = tripService;
+    _logger.info('Trip service registered with data collection service');
+  }
+  
   /// Initialize the data collection service
   Future<bool> initialize() async {
     if (_isInitialized) return true;
@@ -102,6 +110,11 @@ class DataCollectionService extends ChangeNotifier {
       } catch (e) {
         _logger.warning('OBD initialization failed, will use sensor fallback: $e');
         _useFallbackMode = true;
+      }
+      
+      // Initialize trip service if available
+      if (_tripService != null) {
+        await _tripService!.initialize();
       }
       
       _isInitialized = true;
@@ -162,6 +175,12 @@ class DataCollectionService extends ChangeNotifier {
         await _analyticsService!.initialize();
       }
       
+      // Start a new trip if we have a trip service
+      if (_tripService != null && !_tripService!.isOnTrip) {
+        await _tripService!.startTrip();
+        _logger.info('Started a new trip via TripService');
+      }
+      
       _isCollecting = true;
       _clearErrorMessage();
       notifyListeners();
@@ -174,7 +193,7 @@ class DataCollectionService extends ChangeNotifier {
   }
   
   /// Stop collecting driving data
-  void stopCollection() {
+  Future<void> stopCollection() async {
     if (!_isCollecting) return;
     
     _logger.info('Stopping data collection');
@@ -192,6 +211,12 @@ class DataCollectionService extends ChangeNotifier {
     // Stop analytics if available
     if (_analyticsService != null) {
       _analyticsService!.stopAnalysis();
+    }
+    
+    // End the current trip if we have a trip service
+    if (_tripService != null && _tripService!.isOnTrip) {
+      await _tripService!.endTrip();
+      _logger.info('Ended current trip via TripService');
     }
     
     _isCollecting = false;
@@ -256,6 +281,11 @@ class DataCollectionService extends ChangeNotifier {
     _dataStreamController.add(combinedData);
     _ecoDrivingManager.addDataPoint(combinedData);
     
+    // Send to trip service if available and on a trip
+    if (_tripService != null && _tripService!.isOnTrip) {
+      _tripService!.processDataPoint(combinedData);
+    }
+    
     // Trigger analytics if available
     if (_analyticsService != null && _isCollecting) {
       _analyticsService!.triggerAnalysis();
@@ -291,6 +321,11 @@ class DataCollectionService extends ChangeNotifier {
       // Process data
       _dataStreamController.add(combinedData);
       _ecoDrivingManager.addDataPoint(combinedData);
+      
+      // Send to trip service if available and on a trip
+      if (_tripService != null && _tripService!.isOnTrip) {
+        _tripService!.processDataPoint(combinedData);
+      }
       
       // Trigger analytics if available
       if (_analyticsService != null) {
