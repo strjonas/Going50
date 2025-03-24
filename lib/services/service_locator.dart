@@ -7,6 +7,7 @@ import 'package:going50/behavior_classifier_lib/managers/eco_driving_manager.dar
 import 'package:going50/services/driving/obd_connection_service.dart';
 import 'package:going50/services/driving/sensor_service.dart';
 import 'package:going50/services/driving/data_collection_service.dart';
+import 'package:going50/services/driving/analytics_service.dart';
 import 'package:logging/logging.dart';
 
 /// Global instance of the service locator
@@ -22,6 +23,9 @@ Future<void> setupServiceLocator() async {
   
   // Register services
   _registerServices();
+  
+  // Connect services that need post-initialization setup
+  _connectServices();
   
   // Setup is complete
   debugPrint('Service locator initialized successfully');
@@ -103,5 +107,20 @@ void _registerServices() {
     ),
   );
   
+  // Register Analytics Service
+  serviceLocator.registerLazySingleton<AnalyticsService>(
+    () => AnalyticsService(
+      serviceLocator<EcoDrivingManager>(),
+    ),
+  );
+  
   // Additional services will be registered here as they are implemented
+}
+
+/// Connect services that need post-initialization setup
+void _connectServices() {
+  // Connect Analytics Service with Data Collection Service
+  serviceLocator<DataCollectionService>().setAnalyticsService(
+    serviceLocator<AnalyticsService>()
+  );
 } 

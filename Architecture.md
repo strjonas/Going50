@@ -264,6 +264,7 @@ services/
 ├── driving/                      # Driving-related services
 │   ├── driving_service.dart      # Main driving service facade
 │   ├── obd_connection_service.dart # OBD connection management
+|   |-- sensor_service # Sensor Lib Handling
 │   ├── data_collection_service.dart # Data collection coordination
 │   ├── analytics_service.dart    # Driving analytics
 │   ├── feedback_service.dart     # Feedback generation

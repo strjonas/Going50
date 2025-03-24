@@ -6,6 +6,7 @@ import 'package:going50/core_models/obd_II_data.dart';
 import 'package:going50/core_models/phone_sensor_data.dart';
 import 'package:going50/services/driving/obd_connection_service.dart';
 import 'package:going50/services/driving/sensor_service.dart';
+import 'package:going50/services/driving/analytics_service.dart';
 import 'package:logging/logging.dart';
 
 /// A service that coordinates collection of driving data from OBD and sensors.
@@ -22,6 +23,7 @@ class DataCollectionService extends ChangeNotifier {
   final ObdConnectionService _obdConnectionService;
   final SensorService _sensorService;
   final EcoDrivingManager _ecoDrivingManager;
+  AnalyticsService? _analyticsService; // Optional dependency
   
   // Service state
   bool _isInitialized = false;
@@ -71,6 +73,12 @@ class DataCollectionService extends ChangeNotifier {
     _sensorService.dataStream.listen((data) {
       _processSensorData(data);
     });
+  }
+  
+  /// Set the analytics service
+  void setAnalyticsService(AnalyticsService analyticsService) {
+    _analyticsService = analyticsService;
+    _logger.info('Analytics service registered with data collection service');
   }
   
   /// Initialize the data collection service
@@ -149,6 +157,11 @@ class DataCollectionService extends ChangeNotifier {
         (_) => _collectDataPoint()
       );
       
+      // Initialize analytics if available
+      if (_analyticsService != null) {
+        await _analyticsService!.initialize();
+      }
+      
       _isCollecting = true;
       _clearErrorMessage();
       notifyListeners();
@@ -175,6 +188,11 @@ class DataCollectionService extends ChangeNotifier {
     
     _backgroundCollectionTimer?.cancel();
     _backgroundCollectionTimer = null;
+    
+    // Stop analytics if available
+    if (_analyticsService != null) {
+      _analyticsService!.stopAnalysis();
+    }
     
     _isCollecting = false;
     notifyListeners();
@@ -237,6 +255,11 @@ class DataCollectionService extends ChangeNotifier {
     // Process immediately
     _dataStreamController.add(combinedData);
     _ecoDrivingManager.addDataPoint(combinedData);
+    
+    // Trigger analytics if available
+    if (_analyticsService != null && _isCollecting) {
+      _analyticsService!.triggerAnalysis();
+    }
   }
   
   /// Actively collect a data point regardless of individual data streams
@@ -268,6 +291,11 @@ class DataCollectionService extends ChangeNotifier {
       // Process data
       _dataStreamController.add(combinedData);
       _ecoDrivingManager.addDataPoint(combinedData);
+      
+      // Trigger analytics if available
+      if (_analyticsService != null) {
+        _analyticsService!.triggerAnalysis();
+      }
       
     } catch (e) {
       _logger.warning('Error collecting data point: $e');
