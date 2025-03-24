@@ -14,6 +14,7 @@ import 'presentation/providers/user_provider.dart';
 import 'presentation/providers/social_provider.dart';
 import 'presentation/screens/onboarding/onboarding_screen.dart';
 import 'services/user/user_service.dart';
+import 'services/user/preferences_service.dart';
 
 /// The main application widget for Going50.
 ///
@@ -68,8 +69,12 @@ class _AppState extends State<App> {
             serviceLocator<DrivingService>(),
             serviceLocator<PerformanceMetricsService>(),
           )),
-        ChangeNotifierProvider(
-          create: (_) => UserProvider(serviceLocator<UserService>())),
+        ChangeNotifierProvider<UserProvider>(
+          create: (_) => UserProvider(
+            serviceLocator<UserService>(),
+            serviceLocator<PreferencesService>(),
+          )
+        ),
         ChangeNotifierProvider(
           create: (_) => SocialProvider()),
       ],

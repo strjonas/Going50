@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:going50/core_models/user_profile.dart';
 import 'package:going50/services/user/user_service.dart';
+import 'package:going50/services/user/preferences_service.dart';
 
 /// Provider for user profile state
 ///
@@ -11,13 +12,14 @@ import 'package:going50/services/user/user_service.dart';
 class UserProvider extends ChangeNotifier {
   // Dependencies
   final UserService _userService;
+  final PreferencesService _preferencesService;
   
   // State
   UserProfile? _userProfile;
   bool _isAnonymous = true;
   bool _isLoading = false;
   String? _errorMessage;
-  Map<String, dynamic> _preferences = {};
+  Map<String, Map<String, dynamic>> _preferences = {};
   
   // Public getters
   
@@ -34,10 +36,10 @@ class UserProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   
   /// User preferences
-  Map<String, dynamic> get preferences => _preferences;
+  Map<String, Map<String, dynamic>> get preferences => _preferences;
   
   /// Constructor
-  UserProvider(this._userService) {
+  UserProvider(this._userService, this._preferencesService) {
     _loadUserProfile();
     
     // Listen for user profile changes
@@ -47,6 +49,12 @@ class UserProvider extends ChangeNotifier {
         _isAnonymous = _userService.isAnonymous;
         notifyListeners();
       }
+    });
+    
+    // Listen for preference changes
+    _preferencesService.preferencesStream.listen((prefs) {
+      _preferences = prefs;
+      notifyListeners();
     });
   }
   
@@ -60,8 +68,11 @@ class UserProvider extends ChangeNotifier {
       _userProfile = _userService.currentUser;
       _isAnonymous = _userService.isAnonymous;
       
-      // Load preferences
-      _loadPreferences();
+      // Initialize preferences service with current user ID
+      if (_userProfile != null) {
+        await _preferencesService.initialize(_userProfile!.id);
+        _preferences = _preferencesService.getAllPreferences();
+      }
       
       notifyListeners();
     } catch (e) {
@@ -71,31 +82,14 @@ class UserProvider extends ChangeNotifier {
     }
   }
   
-  /// Load user preferences
-  Future<void> _loadPreferences() async {
-    try {
-      // Get preferences from user profile for now
-      // This will be expanded when we implement the preferences service
-      _preferences = _userProfile?.preferences ?? {
-        'notifications': {
-          'trip_summary': true,
-          'achievements': true,
-          'eco_tips': true,
-          'social': false,
-        },
-        'privacy': {
-          'share_trip_data': false,
-          'share_achievements': false,
-          'allow_leaderboard': false,
-        },
-        'display': {
-          'dark_mode': 'system', // 'light', 'dark', 'system'
-          'units': 'metric', // 'metric', 'imperial'
-        },
-      };
-    } catch (e) {
-      _setError('Failed to load preferences: $e');
-    }
+  /// Get a specific preference
+  dynamic getPreference(String category, String key) {
+    return _preferencesService.getPreference(category, key);
+  }
+  
+  /// Get all preferences for a category
+  Map<String, dynamic>? getPreferenceCategory(String category) {
+    return _preferencesService.getCategory(category);
   }
   
   /// Update a user preference
@@ -103,24 +97,38 @@ class UserProvider extends ChangeNotifier {
     _setLoading(true);
     
     try {
-      // Validate that the category exists
-      if (!_preferences.containsKey(category)) {
-        throw Exception('Preference category $category does not exist');
-      }
-      
-      // Validate that the key exists in the category
-      if (!(_preferences[category] as Map<String, dynamic>).containsKey(key)) {
-        throw Exception('Preference key $key does not exist in category $category');
-      }
-      
-      // Update the preference
-      (_preferences[category] as Map<String, dynamic>)[key] = value;
-      
-      // TODO: Save preferences when preferences service is implemented
-      
-      notifyListeners();
+      await _preferencesService.setPreference(category, key, value);
+      // No need to update local preferences here as we're listening to the preferences stream
     } catch (e) {
       _setError('Failed to update preference: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  /// Reset preferences for a category to defaults
+  Future<void> resetCategoryPreferences(String category) async {
+    _setLoading(true);
+    
+    try {
+      await _preferencesService.resetCategory(category);
+      // No need to update local preferences here as we're listening to the preferences stream
+    } catch (e) {
+      _setError('Failed to reset preferences: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  /// Reset all preferences to defaults
+  Future<void> resetAllPreferences() async {
+    _setLoading(true);
+    
+    try {
+      await _preferencesService.resetAllPreferences();
+      // No need to update local preferences here as we're listening to the preferences stream
+    } catch (e) {
+      _setError('Failed to reset preferences: $e');
     } finally {
       _setLoading(false);
     }
