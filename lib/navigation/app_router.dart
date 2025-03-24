@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import '../core/constants/route_constants.dart';
+import '../presentation/screens/onboarding/onboarding_screen.dart';
+import '../presentation/screens/onboarding/welcome_screen.dart';
+import '../presentation/screens/onboarding/value_carousel_screen.dart';
+import '../presentation/screens/onboarding/account_choice_screen.dart';
+import '../presentation/screens/onboarding/connection_setup_screen.dart';
 
 /// AppRouter handles route management for the application.
 /// 
@@ -87,29 +92,31 @@ class AppRouter {
       // Onboarding routes
       case OnboardingRoutes.welcome:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Welcome Screen - To be implemented')),
+          builder: (context) => WelcomeScreen(
+            onGetStarted: () => Navigator.of(context).pushNamed(OnboardingRoutes.valueCarousel),
           ),
         );
         
       case OnboardingRoutes.valueCarousel:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Value Carousel Screen - To be implemented')),
+          builder: (context) => ValueCarouselScreen(
+            onNext: () => Navigator.of(context).pushNamed(OnboardingRoutes.accountChoice),
+            onSkip: () => Navigator.of(context).pushNamed(OnboardingRoutes.accountChoice),
           ),
         );
         
       case OnboardingRoutes.accountChoice:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Account Choice Screen - To be implemented')),
+          builder: (context) => AccountChoiceScreen(
+            onContinue: () => Navigator.of(context).pushNamed(OnboardingRoutes.connectionSetup),
           ),
         );
         
       case OnboardingRoutes.connectionSetup:
+        final VoidCallback? onComplete = settings.arguments as VoidCallback?;
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Connection Setup Screen - To be implemented')),
+          builder: (context) => ConnectionSetupScreen(
+            onContinue: onComplete ?? () => Navigator.of(context).pushReplacementNamed(TabRoutes.driveTab),
           ),
         );
         

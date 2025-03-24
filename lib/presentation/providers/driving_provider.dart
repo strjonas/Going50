@@ -21,6 +21,7 @@ class DrivingProvider extends ChangeNotifier {
   // State
   double _currentEcoScore = 0.0;
   List<DrivingEvent> _recentEvents = [];
+  bool _preferOBD = true; // Default to preferring OBD connection if available
   
   /// Constructor
   DrivingProvider(this._drivingService) {
@@ -58,6 +59,9 @@ class DrivingProvider extends ChangeNotifier {
   /// Any error message from the driving service
   String? get errorMessage => _drivingService.errorMessage;
   
+  /// Whether the user prefers to use OBD when available
+  bool get preferOBD => _preferOBD;
+  
   // Public methods that delegate to the driving service
   
   /// Start a new trip
@@ -86,6 +90,13 @@ class DrivingProvider extends ChangeNotifier {
   /// Disconnect from the OBD device
   Future<void> disconnectObdDevice() async {
     await _drivingService.disconnectFromObdDevice();
+  }
+  
+  /// Set whether the user prefers to use OBD when available
+  void setPreferOBD(bool prefer) {
+    _preferOBD = prefer;
+    // TODO: Store this preference in persistent storage when user service is implemented
+    notifyListeners();
   }
   
   /// Get the latest combined driving data
