@@ -80,3 +80,10 @@ The implementation is organized into logical phases, with each phase building up
 
 **Summary**: Implemented the trip summary screen that displays detailed information about a completed trip. Created four component files: TripOverviewHeader showing basic trip information (date, time, duration, eco-score), SavingsMetricsSection showing estimated savings (fuel, CO2, money), BehaviorBreakdownChart displaying a breakdown of driving behaviors with visual score bars, and ImprovementSuggestionCard showing personalized driving improvement suggestions. Updated the app router to navigate to the trip summary screen after a trip is completed. Added necessary methods to the DrivingProvider to retrieve trip data. The implementation follows a clean, modular approach with comprehensive documentation and proper error handling. The trip summary screen provides a complete post-trip analysis with actionable insights for improving eco-driving behavior.
 
+
+## Phase 4: Insights & Analytics (Week 4)
+
+### Day 16: Insights Dashboard Implementation ✅
+
+**Summary**: Implemented the main insights dashboard screen with comprehensive analytics visualization. Created four key components: TimePeriodSelector for switching between different time frames (day, week, month, year), EcoScoreTrendChart displaying eco-score trends with animated line charts, SavingsSummaryCard showing fuel, money, and CO2 savings, and DrivingBehaviorsChart visualizing performance across seven eco-driving behaviors in a radar chart. Implemented the InsightsProvider with detailed methods for loading and calculating metrics data for different time periods, generating trend data, and providing recommendations based on driving behavior scores. The implementation includes graceful error handling, loading states, and comprehensive documentation. The insights dashboard provides users with a clear visual representation of their eco-driving performance and actionable feedback for improvement.
+

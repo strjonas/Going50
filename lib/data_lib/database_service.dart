@@ -353,7 +353,7 @@ class AppDatabase extends _$AppDatabase {
           await batch((batch) {
             // Example of adding default system challenges
             batch.insert(challengesTable, ChallengesTableCompanion.insert(
-              id: 'system_challenge_1',
+              id: '00000000-0000-4000-a000-000000000001', // UUID format
               title: 'Eco-Driving Novice',
               description: 'Maintain an eco-score above 70 for 5 consecutive trips',
               type: 'achievement',
@@ -362,7 +362,7 @@ class AppDatabase extends _$AppDatabase {
             ));
             
             batch.insert(challengesTable, ChallengesTableCompanion.insert(
-              id: 'system_challenge_2',
+              id: '00000000-0000-4000-a000-000000000002', // UUID format
               title: 'Smooth Operator',
               description: 'Complete a trip with zero aggressive acceleration events',
               type: 'daily',
