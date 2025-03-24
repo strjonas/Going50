@@ -8,6 +8,7 @@ import '../presentation/screens/onboarding/connection_setup_screen.dart';
 import '../presentation/screens/drive/active_drive_screen.dart';
 import '../presentation/screens/drive/trip_summary_screen.dart';
 import '../presentation/screens/insights/trip_history_screen.dart';
+import '../presentation/screens/insights/trip_detail_screen.dart';
 
 /// AppRouter handles route management for the application.
 /// 
@@ -37,10 +38,9 @@ class AppRouter {
         );
         
       case InsightsRoutes.tripDetail:
+        final tripId = settings.arguments as String;
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Trip Detail Screen - To be implemented')),
-          ),
+          builder: (_) => TripDetailScreen(tripId: tripId),
         );
         
       // Community routes
