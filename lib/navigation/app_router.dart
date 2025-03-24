@@ -6,6 +6,7 @@ import '../presentation/screens/onboarding/value_carousel_screen.dart';
 import '../presentation/screens/onboarding/account_choice_screen.dart';
 import '../presentation/screens/onboarding/connection_setup_screen.dart';
 import '../presentation/screens/drive/active_drive_screen.dart';
+import '../presentation/screens/drive/trip_summary_screen.dart';
 
 /// AppRouter handles route management for the application.
 /// 
@@ -23,10 +24,9 @@ class AppRouter {
         );
         
       case DriveRoutes.tripSummary:
+        final tripId = settings.arguments as String?;
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Trip Summary Screen - To be implemented')),
-          ),
+          builder: (_) => TripSummaryScreen(tripId: tripId),
         );
         
       // Insights routes

@@ -99,6 +99,16 @@ class DrivingProvider extends ChangeNotifier {
     notifyListeners();
   }
   
+  /// Get the trip history
+  Future<List<Trip>> getTrips({int limit = 10, int offset = 0}) async {
+    return await _drivingService.getTrips(limit: limit, offset: offset);
+  }
+  
+  /// Get a specific trip by ID
+  Future<Trip?> getTrip(String tripId) async {
+    return await _drivingService.getTrip(tripId);
+  }
+  
   /// Get the latest combined driving data
   Future<CombinedDrivingData?> getLatestDrivingData() async {
     // We need to access the data stream and get the latest value
