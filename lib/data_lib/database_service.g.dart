@@ -5971,6 +5971,724 @@ class SocialInteractionsTableCompanion
   }
 }
 
+class $FriendRequestsTableTable extends FriendRequestsTable
+    with TableInfo<$FriendRequestsTableTable, FriendRequestsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FriendRequestsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 36,
+      maxTextLength: 36,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fromUserIdMeta = const VerificationMeta(
+    'fromUserId',
+  );
+  @override
+  late final GeneratedColumn<String> fromUserId = GeneratedColumn<String>(
+    'from_user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES user_profiles_table (id)',
+    ),
+  );
+  static const VerificationMeta _toUserIdMeta = const VerificationMeta(
+    'toUserId',
+  );
+  @override
+  late final GeneratedColumn<String> toUserId = GeneratedColumn<String>(
+    'to_user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES user_profiles_table (id)',
+    ),
+  );
+  static const VerificationMeta _requestedAtMeta = const VerificationMeta(
+    'requestedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> requestedAt = GeneratedColumn<DateTime>(
+    'requested_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    fromUserId,
+    toUserId,
+    requestedAt,
+    status,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'friend_requests_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FriendRequestsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('from_user_id')) {
+      context.handle(
+        _fromUserIdMeta,
+        fromUserId.isAcceptableOrUnknown(
+          data['from_user_id']!,
+          _fromUserIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_fromUserIdMeta);
+    }
+    if (data.containsKey('to_user_id')) {
+      context.handle(
+        _toUserIdMeta,
+        toUserId.isAcceptableOrUnknown(data['to_user_id']!, _toUserIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_toUserIdMeta);
+    }
+    if (data.containsKey('requested_at')) {
+      context.handle(
+        _requestedAtMeta,
+        requestedAt.isAcceptableOrUnknown(
+          data['requested_at']!,
+          _requestedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_requestedAtMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FriendRequestsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FriendRequestsTableData(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      fromUserId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}from_user_id'],
+          )!,
+      toUserId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}to_user_id'],
+          )!,
+      requestedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}requested_at'],
+          )!,
+      status:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}status'],
+          )!,
+    );
+  }
+
+  @override
+  $FriendRequestsTableTable createAlias(String alias) {
+    return $FriendRequestsTableTable(attachedDatabase, alias);
+  }
+}
+
+class FriendRequestsTableData extends DataClass
+    implements Insertable<FriendRequestsTableData> {
+  final String id;
+  final String fromUserId;
+  final String toUserId;
+  final DateTime requestedAt;
+  final String status;
+  const FriendRequestsTableData({
+    required this.id,
+    required this.fromUserId,
+    required this.toUserId,
+    required this.requestedAt,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['from_user_id'] = Variable<String>(fromUserId);
+    map['to_user_id'] = Variable<String>(toUserId);
+    map['requested_at'] = Variable<DateTime>(requestedAt);
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  FriendRequestsTableCompanion toCompanion(bool nullToAbsent) {
+    return FriendRequestsTableCompanion(
+      id: Value(id),
+      fromUserId: Value(fromUserId),
+      toUserId: Value(toUserId),
+      requestedAt: Value(requestedAt),
+      status: Value(status),
+    );
+  }
+
+  factory FriendRequestsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FriendRequestsTableData(
+      id: serializer.fromJson<String>(json['id']),
+      fromUserId: serializer.fromJson<String>(json['fromUserId']),
+      toUserId: serializer.fromJson<String>(json['toUserId']),
+      requestedAt: serializer.fromJson<DateTime>(json['requestedAt']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'fromUserId': serializer.toJson<String>(fromUserId),
+      'toUserId': serializer.toJson<String>(toUserId),
+      'requestedAt': serializer.toJson<DateTime>(requestedAt),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  FriendRequestsTableData copyWith({
+    String? id,
+    String? fromUserId,
+    String? toUserId,
+    DateTime? requestedAt,
+    String? status,
+  }) => FriendRequestsTableData(
+    id: id ?? this.id,
+    fromUserId: fromUserId ?? this.fromUserId,
+    toUserId: toUserId ?? this.toUserId,
+    requestedAt: requestedAt ?? this.requestedAt,
+    status: status ?? this.status,
+  );
+  FriendRequestsTableData copyWithCompanion(FriendRequestsTableCompanion data) {
+    return FriendRequestsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      fromUserId:
+          data.fromUserId.present ? data.fromUserId.value : this.fromUserId,
+      toUserId: data.toUserId.present ? data.toUserId.value : this.toUserId,
+      requestedAt:
+          data.requestedAt.present ? data.requestedAt.value : this.requestedAt,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FriendRequestsTableData(')
+          ..write('id: $id, ')
+          ..write('fromUserId: $fromUserId, ')
+          ..write('toUserId: $toUserId, ')
+          ..write('requestedAt: $requestedAt, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, fromUserId, toUserId, requestedAt, status);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FriendRequestsTableData &&
+          other.id == this.id &&
+          other.fromUserId == this.fromUserId &&
+          other.toUserId == this.toUserId &&
+          other.requestedAt == this.requestedAt &&
+          other.status == this.status);
+}
+
+class FriendRequestsTableCompanion
+    extends UpdateCompanion<FriendRequestsTableData> {
+  final Value<String> id;
+  final Value<String> fromUserId;
+  final Value<String> toUserId;
+  final Value<DateTime> requestedAt;
+  final Value<String> status;
+  final Value<int> rowid;
+  const FriendRequestsTableCompanion({
+    this.id = const Value.absent(),
+    this.fromUserId = const Value.absent(),
+    this.toUserId = const Value.absent(),
+    this.requestedAt = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FriendRequestsTableCompanion.insert({
+    required String id,
+    required String fromUserId,
+    required String toUserId,
+    required DateTime requestedAt,
+    required String status,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       fromUserId = Value(fromUserId),
+       toUserId = Value(toUserId),
+       requestedAt = Value(requestedAt),
+       status = Value(status);
+  static Insertable<FriendRequestsTableData> custom({
+    Expression<String>? id,
+    Expression<String>? fromUserId,
+    Expression<String>? toUserId,
+    Expression<DateTime>? requestedAt,
+    Expression<String>? status,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (fromUserId != null) 'from_user_id': fromUserId,
+      if (toUserId != null) 'to_user_id': toUserId,
+      if (requestedAt != null) 'requested_at': requestedAt,
+      if (status != null) 'status': status,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FriendRequestsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? fromUserId,
+    Value<String>? toUserId,
+    Value<DateTime>? requestedAt,
+    Value<String>? status,
+    Value<int>? rowid,
+  }) {
+    return FriendRequestsTableCompanion(
+      id: id ?? this.id,
+      fromUserId: fromUserId ?? this.fromUserId,
+      toUserId: toUserId ?? this.toUserId,
+      requestedAt: requestedAt ?? this.requestedAt,
+      status: status ?? this.status,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (fromUserId.present) {
+      map['from_user_id'] = Variable<String>(fromUserId.value);
+    }
+    if (toUserId.present) {
+      map['to_user_id'] = Variable<String>(toUserId.value);
+    }
+    if (requestedAt.present) {
+      map['requested_at'] = Variable<DateTime>(requestedAt.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FriendRequestsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('fromUserId: $fromUserId, ')
+          ..write('toUserId: $toUserId, ')
+          ..write('requestedAt: $requestedAt, ')
+          ..write('status: $status, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $UserBlocksTableTable extends UserBlocksTable
+    with TableInfo<$UserBlocksTableTable, UserBlocksTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UserBlocksTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 36,
+      maxTextLength: 36,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES user_profiles_table (id)',
+    ),
+  );
+  static const VerificationMeta _blockedUserIdMeta = const VerificationMeta(
+    'blockedUserId',
+  );
+  @override
+  late final GeneratedColumn<String> blockedUserId = GeneratedColumn<String>(
+    'blocked_user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES user_profiles_table (id)',
+    ),
+  );
+  static const VerificationMeta _blockedAtMeta = const VerificationMeta(
+    'blockedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> blockedAt = GeneratedColumn<DateTime>(
+    'blocked_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, userId, blockedUserId, blockedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'user_blocks_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<UserBlocksTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('blocked_user_id')) {
+      context.handle(
+        _blockedUserIdMeta,
+        blockedUserId.isAcceptableOrUnknown(
+          data['blocked_user_id']!,
+          _blockedUserIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_blockedUserIdMeta);
+    }
+    if (data.containsKey('blocked_at')) {
+      context.handle(
+        _blockedAtMeta,
+        blockedAt.isAcceptableOrUnknown(data['blocked_at']!, _blockedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_blockedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  UserBlocksTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UserBlocksTableData(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      userId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}user_id'],
+          )!,
+      blockedUserId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}blocked_user_id'],
+          )!,
+      blockedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}blocked_at'],
+          )!,
+    );
+  }
+
+  @override
+  $UserBlocksTableTable createAlias(String alias) {
+    return $UserBlocksTableTable(attachedDatabase, alias);
+  }
+}
+
+class UserBlocksTableData extends DataClass
+    implements Insertable<UserBlocksTableData> {
+  final String id;
+  final String userId;
+  final String blockedUserId;
+  final DateTime blockedAt;
+  const UserBlocksTableData({
+    required this.id,
+    required this.userId,
+    required this.blockedUserId,
+    required this.blockedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['user_id'] = Variable<String>(userId);
+    map['blocked_user_id'] = Variable<String>(blockedUserId);
+    map['blocked_at'] = Variable<DateTime>(blockedAt);
+    return map;
+  }
+
+  UserBlocksTableCompanion toCompanion(bool nullToAbsent) {
+    return UserBlocksTableCompanion(
+      id: Value(id),
+      userId: Value(userId),
+      blockedUserId: Value(blockedUserId),
+      blockedAt: Value(blockedAt),
+    );
+  }
+
+  factory UserBlocksTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UserBlocksTableData(
+      id: serializer.fromJson<String>(json['id']),
+      userId: serializer.fromJson<String>(json['userId']),
+      blockedUserId: serializer.fromJson<String>(json['blockedUserId']),
+      blockedAt: serializer.fromJson<DateTime>(json['blockedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'userId': serializer.toJson<String>(userId),
+      'blockedUserId': serializer.toJson<String>(blockedUserId),
+      'blockedAt': serializer.toJson<DateTime>(blockedAt),
+    };
+  }
+
+  UserBlocksTableData copyWith({
+    String? id,
+    String? userId,
+    String? blockedUserId,
+    DateTime? blockedAt,
+  }) => UserBlocksTableData(
+    id: id ?? this.id,
+    userId: userId ?? this.userId,
+    blockedUserId: blockedUserId ?? this.blockedUserId,
+    blockedAt: blockedAt ?? this.blockedAt,
+  );
+  UserBlocksTableData copyWithCompanion(UserBlocksTableCompanion data) {
+    return UserBlocksTableData(
+      id: data.id.present ? data.id.value : this.id,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      blockedUserId:
+          data.blockedUserId.present
+              ? data.blockedUserId.value
+              : this.blockedUserId,
+      blockedAt: data.blockedAt.present ? data.blockedAt.value : this.blockedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserBlocksTableData(')
+          ..write('id: $id, ')
+          ..write('userId: $userId, ')
+          ..write('blockedUserId: $blockedUserId, ')
+          ..write('blockedAt: $blockedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, userId, blockedUserId, blockedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserBlocksTableData &&
+          other.id == this.id &&
+          other.userId == this.userId &&
+          other.blockedUserId == this.blockedUserId &&
+          other.blockedAt == this.blockedAt);
+}
+
+class UserBlocksTableCompanion extends UpdateCompanion<UserBlocksTableData> {
+  final Value<String> id;
+  final Value<String> userId;
+  final Value<String> blockedUserId;
+  final Value<DateTime> blockedAt;
+  final Value<int> rowid;
+  const UserBlocksTableCompanion({
+    this.id = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.blockedUserId = const Value.absent(),
+    this.blockedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  UserBlocksTableCompanion.insert({
+    required String id,
+    required String userId,
+    required String blockedUserId,
+    required DateTime blockedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       userId = Value(userId),
+       blockedUserId = Value(blockedUserId),
+       blockedAt = Value(blockedAt);
+  static Insertable<UserBlocksTableData> custom({
+    Expression<String>? id,
+    Expression<String>? userId,
+    Expression<String>? blockedUserId,
+    Expression<DateTime>? blockedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (userId != null) 'user_id': userId,
+      if (blockedUserId != null) 'blocked_user_id': blockedUserId,
+      if (blockedAt != null) 'blocked_at': blockedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  UserBlocksTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? userId,
+    Value<String>? blockedUserId,
+    Value<DateTime>? blockedAt,
+    Value<int>? rowid,
+  }) {
+    return UserBlocksTableCompanion(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      blockedUserId: blockedUserId ?? this.blockedUserId,
+      blockedAt: blockedAt ?? this.blockedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (blockedUserId.present) {
+      map['blocked_user_id'] = Variable<String>(blockedUserId.value);
+    }
+    if (blockedAt.present) {
+      map['blocked_at'] = Variable<DateTime>(blockedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserBlocksTableCompanion(')
+          ..write('id: $id, ')
+          ..write('userId: $userId, ')
+          ..write('blockedUserId: $blockedUserId, ')
+          ..write('blockedAt: $blockedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SharedContentTableTable extends SharedContentTable
     with TableInfo<$SharedContentTableTable, SharedContentTableData> {
   @override
@@ -11365,6 +12083,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $SocialConnectionsTableTable(this);
   late final $SocialInteractionsTableTable socialInteractionsTable =
       $SocialInteractionsTableTable(this);
+  late final $FriendRequestsTableTable friendRequestsTable =
+      $FriendRequestsTableTable(this);
+  late final $UserBlocksTableTable userBlocksTable = $UserBlocksTableTable(
+    this,
+  );
   late final $SharedContentTableTable sharedContentTable =
       $SharedContentTableTable(this);
   late final $UserPreferencesTableTable userPreferencesTable =
@@ -11398,6 +12121,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     dataPrivacySettingsTable,
     socialConnectionsTable,
     socialInteractionsTable,
+    friendRequestsTable,
+    userBlocksTable,
     sharedContentTable,
     userPreferencesTable,
     feedbackEffectivenessTable,
@@ -16847,6 +17572,865 @@ typedef $$SocialInteractionsTableTableProcessedTableManager =
       SocialInteractionsTableData,
       PrefetchHooks Function({bool userId})
     >;
+typedef $$FriendRequestsTableTableCreateCompanionBuilder =
+    FriendRequestsTableCompanion Function({
+      required String id,
+      required String fromUserId,
+      required String toUserId,
+      required DateTime requestedAt,
+      required String status,
+      Value<int> rowid,
+    });
+typedef $$FriendRequestsTableTableUpdateCompanionBuilder =
+    FriendRequestsTableCompanion Function({
+      Value<String> id,
+      Value<String> fromUserId,
+      Value<String> toUserId,
+      Value<DateTime> requestedAt,
+      Value<String> status,
+      Value<int> rowid,
+    });
+
+final class $$FriendRequestsTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $FriendRequestsTableTable,
+          FriendRequestsTableData
+        > {
+  $$FriendRequestsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $UserProfilesTableTable _fromUserIdTable(_$AppDatabase db) =>
+      db.userProfilesTable.createAlias(
+        $_aliasNameGenerator(
+          db.friendRequestsTable.fromUserId,
+          db.userProfilesTable.id,
+        ),
+      );
+
+  $$UserProfilesTableTableProcessedTableManager get fromUserId {
+    final $_column = $_itemColumn<String>('from_user_id')!;
+
+    final manager = $$UserProfilesTableTableTableManager(
+      $_db,
+      $_db.userProfilesTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_fromUserIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $UserProfilesTableTable _toUserIdTable(_$AppDatabase db) =>
+      db.userProfilesTable.createAlias(
+        $_aliasNameGenerator(
+          db.friendRequestsTable.toUserId,
+          db.userProfilesTable.id,
+        ),
+      );
+
+  $$UserProfilesTableTableProcessedTableManager get toUserId {
+    final $_column = $_itemColumn<String>('to_user_id')!;
+
+    final manager = $$UserProfilesTableTableTableManager(
+      $_db,
+      $_db.userProfilesTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_toUserIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$FriendRequestsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $FriendRequestsTableTable> {
+  $$FriendRequestsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get requestedAt => $composableBuilder(
+    column: $table.requestedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$UserProfilesTableTableFilterComposer get fromUserId {
+    final $$UserProfilesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fromUserId,
+      referencedTable: $db.userProfilesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UserProfilesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.userProfilesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UserProfilesTableTableFilterComposer get toUserId {
+    final $$UserProfilesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toUserId,
+      referencedTable: $db.userProfilesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UserProfilesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.userProfilesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FriendRequestsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $FriendRequestsTableTable> {
+  $$FriendRequestsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get requestedAt => $composableBuilder(
+    column: $table.requestedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$UserProfilesTableTableOrderingComposer get fromUserId {
+    final $$UserProfilesTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.fromUserId,
+      referencedTable: $db.userProfilesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UserProfilesTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.userProfilesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UserProfilesTableTableOrderingComposer get toUserId {
+    final $$UserProfilesTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toUserId,
+      referencedTable: $db.userProfilesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UserProfilesTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.userProfilesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$FriendRequestsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FriendRequestsTableTable> {
+  $$FriendRequestsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get requestedAt => $composableBuilder(
+    column: $table.requestedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  $$UserProfilesTableTableAnnotationComposer get fromUserId {
+    final $$UserProfilesTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.fromUserId,
+          referencedTable: $db.userProfilesTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$UserProfilesTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.userProfilesTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$UserProfilesTableTableAnnotationComposer get toUserId {
+    final $$UserProfilesTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.toUserId,
+          referencedTable: $db.userProfilesTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$UserProfilesTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.userProfilesTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$FriendRequestsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FriendRequestsTableTable,
+          FriendRequestsTableData,
+          $$FriendRequestsTableTableFilterComposer,
+          $$FriendRequestsTableTableOrderingComposer,
+          $$FriendRequestsTableTableAnnotationComposer,
+          $$FriendRequestsTableTableCreateCompanionBuilder,
+          $$FriendRequestsTableTableUpdateCompanionBuilder,
+          (FriendRequestsTableData, $$FriendRequestsTableTableReferences),
+          FriendRequestsTableData,
+          PrefetchHooks Function({bool fromUserId, bool toUserId})
+        > {
+  $$FriendRequestsTableTableTableManager(
+    _$AppDatabase db,
+    $FriendRequestsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$FriendRequestsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer:
+              () => $$FriendRequestsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer:
+              () => $$FriendRequestsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> fromUserId = const Value.absent(),
+                Value<String> toUserId = const Value.absent(),
+                Value<DateTime> requestedAt = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FriendRequestsTableCompanion(
+                id: id,
+                fromUserId: fromUserId,
+                toUserId: toUserId,
+                requestedAt: requestedAt,
+                status: status,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String fromUserId,
+                required String toUserId,
+                required DateTime requestedAt,
+                required String status,
+                Value<int> rowid = const Value.absent(),
+              }) => FriendRequestsTableCompanion.insert(
+                id: id,
+                fromUserId: fromUserId,
+                toUserId: toUserId,
+                requestedAt: requestedAt,
+                status: status,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          $$FriendRequestsTableTableReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: ({fromUserId = false, toUserId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                T extends TableManagerState<
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic
+                >
+              >(state) {
+                if (fromUserId) {
+                  state =
+                      state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.fromUserId,
+                            referencedTable:
+                                $$FriendRequestsTableTableReferences
+                                    ._fromUserIdTable(db),
+                            referencedColumn:
+                                $$FriendRequestsTableTableReferences
+                                    ._fromUserIdTable(db)
+                                    .id,
+                          )
+                          as T;
+                }
+                if (toUserId) {
+                  state =
+                      state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.toUserId,
+                            referencedTable:
+                                $$FriendRequestsTableTableReferences
+                                    ._toUserIdTable(db),
+                            referencedColumn:
+                                $$FriendRequestsTableTableReferences
+                                    ._toUserIdTable(db)
+                                    .id,
+                          )
+                          as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$FriendRequestsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FriendRequestsTableTable,
+      FriendRequestsTableData,
+      $$FriendRequestsTableTableFilterComposer,
+      $$FriendRequestsTableTableOrderingComposer,
+      $$FriendRequestsTableTableAnnotationComposer,
+      $$FriendRequestsTableTableCreateCompanionBuilder,
+      $$FriendRequestsTableTableUpdateCompanionBuilder,
+      (FriendRequestsTableData, $$FriendRequestsTableTableReferences),
+      FriendRequestsTableData,
+      PrefetchHooks Function({bool fromUserId, bool toUserId})
+    >;
+typedef $$UserBlocksTableTableCreateCompanionBuilder =
+    UserBlocksTableCompanion Function({
+      required String id,
+      required String userId,
+      required String blockedUserId,
+      required DateTime blockedAt,
+      Value<int> rowid,
+    });
+typedef $$UserBlocksTableTableUpdateCompanionBuilder =
+    UserBlocksTableCompanion Function({
+      Value<String> id,
+      Value<String> userId,
+      Value<String> blockedUserId,
+      Value<DateTime> blockedAt,
+      Value<int> rowid,
+    });
+
+final class $$UserBlocksTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $UserBlocksTableTable,
+          UserBlocksTableData
+        > {
+  $$UserBlocksTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $UserProfilesTableTable _userIdTable(_$AppDatabase db) =>
+      db.userProfilesTable.createAlias(
+        $_aliasNameGenerator(
+          db.userBlocksTable.userId,
+          db.userProfilesTable.id,
+        ),
+      );
+
+  $$UserProfilesTableTableProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $$UserProfilesTableTableTableManager(
+      $_db,
+      $_db.userProfilesTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $UserProfilesTableTable _blockedUserIdTable(_$AppDatabase db) =>
+      db.userProfilesTable.createAlias(
+        $_aliasNameGenerator(
+          db.userBlocksTable.blockedUserId,
+          db.userProfilesTable.id,
+        ),
+      );
+
+  $$UserProfilesTableTableProcessedTableManager get blockedUserId {
+    final $_column = $_itemColumn<String>('blocked_user_id')!;
+
+    final manager = $$UserProfilesTableTableTableManager(
+      $_db,
+      $_db.userProfilesTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_blockedUserIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$UserBlocksTableTableFilterComposer
+    extends Composer<_$AppDatabase, $UserBlocksTableTable> {
+  $$UserBlocksTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get blockedAt => $composableBuilder(
+    column: $table.blockedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$UserProfilesTableTableFilterComposer get userId {
+    final $$UserProfilesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.userProfilesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UserProfilesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.userProfilesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UserProfilesTableTableFilterComposer get blockedUserId {
+    final $$UserProfilesTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.blockedUserId,
+      referencedTable: $db.userProfilesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UserProfilesTableTableFilterComposer(
+            $db: $db,
+            $table: $db.userProfilesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$UserBlocksTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $UserBlocksTableTable> {
+  $$UserBlocksTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get blockedAt => $composableBuilder(
+    column: $table.blockedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$UserProfilesTableTableOrderingComposer get userId {
+    final $$UserProfilesTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.userProfilesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UserProfilesTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.userProfilesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$UserProfilesTableTableOrderingComposer get blockedUserId {
+    final $$UserProfilesTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.blockedUserId,
+      referencedTable: $db.userProfilesTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$UserProfilesTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.userProfilesTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$UserBlocksTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UserBlocksTableTable> {
+  $$UserBlocksTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get blockedAt =>
+      $composableBuilder(column: $table.blockedAt, builder: (column) => column);
+
+  $$UserProfilesTableTableAnnotationComposer get userId {
+    final $$UserProfilesTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.userId,
+          referencedTable: $db.userProfilesTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$UserProfilesTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.userProfilesTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$UserProfilesTableTableAnnotationComposer get blockedUserId {
+    final $$UserProfilesTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.blockedUserId,
+          referencedTable: $db.userProfilesTable,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$UserProfilesTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.userProfilesTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$UserBlocksTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $UserBlocksTableTable,
+          UserBlocksTableData,
+          $$UserBlocksTableTableFilterComposer,
+          $$UserBlocksTableTableOrderingComposer,
+          $$UserBlocksTableTableAnnotationComposer,
+          $$UserBlocksTableTableCreateCompanionBuilder,
+          $$UserBlocksTableTableUpdateCompanionBuilder,
+          (UserBlocksTableData, $$UserBlocksTableTableReferences),
+          UserBlocksTableData,
+          PrefetchHooks Function({bool userId, bool blockedUserId})
+        > {
+  $$UserBlocksTableTableTableManager(
+    _$AppDatabase db,
+    $UserBlocksTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () =>
+                  $$UserBlocksTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$UserBlocksTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer:
+              () => $$UserBlocksTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> blockedUserId = const Value.absent(),
+                Value<DateTime> blockedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => UserBlocksTableCompanion(
+                id: id,
+                userId: userId,
+                blockedUserId: blockedUserId,
+                blockedAt: blockedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String userId,
+                required String blockedUserId,
+                required DateTime blockedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => UserBlocksTableCompanion.insert(
+                id: id,
+                userId: userId,
+                blockedUserId: blockedUserId,
+                blockedAt: blockedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          $$UserBlocksTableTableReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: ({userId = false, blockedUserId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                T extends TableManagerState<
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic,
+                  dynamic
+                >
+              >(state) {
+                if (userId) {
+                  state =
+                      state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.userId,
+                            referencedTable: $$UserBlocksTableTableReferences
+                                ._userIdTable(db),
+                            referencedColumn:
+                                $$UserBlocksTableTableReferences
+                                    ._userIdTable(db)
+                                    .id,
+                          )
+                          as T;
+                }
+                if (blockedUserId) {
+                  state =
+                      state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.blockedUserId,
+                            referencedTable: $$UserBlocksTableTableReferences
+                                ._blockedUserIdTable(db),
+                            referencedColumn:
+                                $$UserBlocksTableTableReferences
+                                    ._blockedUserIdTable(db)
+                                    .id,
+                          )
+                          as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$UserBlocksTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $UserBlocksTableTable,
+      UserBlocksTableData,
+      $$UserBlocksTableTableFilterComposer,
+      $$UserBlocksTableTableOrderingComposer,
+      $$UserBlocksTableTableAnnotationComposer,
+      $$UserBlocksTableTableCreateCompanionBuilder,
+      $$UserBlocksTableTableUpdateCompanionBuilder,
+      (UserBlocksTableData, $$UserBlocksTableTableReferences),
+      UserBlocksTableData,
+      PrefetchHooks Function({bool userId, bool blockedUserId})
+    >;
 typedef $$SharedContentTableTableCreateCompanionBuilder =
     SharedContentTableCompanion Function({
       required String id,
@@ -20939,6 +22523,10 @@ class $AppDatabaseManager {
         _db,
         _db.socialInteractionsTable,
       );
+  $$FriendRequestsTableTableTableManager get friendRequestsTable =>
+      $$FriendRequestsTableTableTableManager(_db, _db.friendRequestsTable);
+  $$UserBlocksTableTableTableManager get userBlocksTable =>
+      $$UserBlocksTableTableTableManager(_db, _db.userBlocksTable);
   $$SharedContentTableTableTableManager get sharedContentTable =>
       $$SharedContentTableTableTableManager(_db, _db.sharedContentTable);
   $$UserPreferencesTableTableTableManager get userPreferencesTable =>

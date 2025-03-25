@@ -204,30 +204,36 @@ class PrivacyService {
     }
   }
   
-  /// Check if an operation is allowed for a data type
+  /// Check if a specific operation is allowed for a data type
   Future<bool> isOperationAllowed(String dataType, String operation) async {
+    _log.info('Checking if $operation is allowed for $dataType');
+    
     try {
-      final setting = await getSettingForDataType(dataType);
-      if (setting == null) {
-        // If no setting exists, use safe defaults
-        return operation == operationLocalStorage;
+      // Get settings for this data type
+      final settings = privacySettings[dataType];
+      
+      // If no settings exist, assume not allowed
+      if (settings == null) {
+        _log.info('No privacy settings found for $dataType, operation not allowed');
+        return false;
       }
       
+      // Check if operation is allowed based on settings
       switch (operation) {
-        case operationLocalStorage:
-          return setting.allowLocalStorage;
-        case operationCloudSync:
-          return setting.allowCloudSync;
-        case operationSharing:
-          return setting.allowSharing;
-        case operationAnalytics:
-          return setting.allowAnonymizedAnalytics;
+        case 'local_storage':
+          return settings.allowLocalStorage;
+        case 'cloud_sync':
+          return settings.allowCloudSync;
+        case 'sharing':
+          return settings.allowSharing;
+        case 'analytics':
+          return settings.allowAnonymizedAnalytics;
         default:
           _log.warning('Unknown operation: $operation');
           return false;
       }
     } catch (e) {
-      _log.warning('Error checking if operation $operation is allowed for $dataType: $e');
+      _log.severe('Error checking operation permission: $e');
       return false;
     }
   }

@@ -716,6 +716,296 @@ class DataStorageManager {
     }
   }
   
+  /// Get friend IDs for a user
+  Future<List<String>> getFriendIds(String userId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      final connections = await _database.getSocialConnectionsForUser(userId);
+      return connections
+          .where((connection) => connection.connectionType == 'friend')
+          .map((connection) => connection.connectedUserId)
+          .toList();
+    } catch (e) {
+      _logger.warning('Error retrieving friend IDs: $e');
+      return [];
+    }
+  }
+  
+  /// Get received friend requests
+  Future<List<String>> getReceivedFriendRequests(String userId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      return await _database.getReceivedFriendRequests(userId);
+    } catch (e) {
+      _logger.warning('Error retrieving received friend requests: $e');
+      return [];
+    }
+  }
+  
+  /// Get sent friend requests
+  Future<List<String>> getSentFriendRequests(String userId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      return await _database.getSentFriendRequests(userId);
+    } catch (e) {
+      _logger.warning('Error retrieving sent friend requests: $e');
+      return [];
+    }
+  }
+  
+  /// Send a friend request
+  Future<bool> sendFriendRequest(String fromUserId, String toUserId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      // Create a unique ID for this request
+      final requestId = const Uuid().v4();
+      
+      // Save the request
+      await _database.saveFriendRequest(
+        requestId,
+        fromUserId,
+        toUserId,
+        DateTime.now(),
+        'pending'
+      );
+      
+      return true;
+    } catch (e) {
+      _logger.warning('Error sending friend request: $e');
+      return false;
+    }
+  }
+  
+  /// Accept a friend request
+  Future<bool> acceptFriendRequest(String toUserId, String fromUserId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      // Update request status
+      await _database.updateFriendRequestStatus(fromUserId, toUserId, 'accepted');
+      
+      // Create social connections in both directions
+      final connectionId1 = const Uuid().v4();
+      final connectionId2 = const Uuid().v4();
+      final now = DateTime.now();
+      
+      // Create a connection from requester to accepter
+      await _database.saveSocialConnection(
+        SocialConnection(
+          id: connectionId1,
+          userId: fromUserId,
+          connectedUserId: toUserId,
+          connectionType: 'friend',
+          connectedSince: now,
+          isMutual: true,
+        )
+      );
+      
+      // Create a connection from accepter to requester
+      await _database.saveSocialConnection(
+        SocialConnection(
+          id: connectionId2,
+          userId: toUserId,
+          connectedUserId: fromUserId,
+          connectionType: 'friend',
+          connectedSince: now,
+          isMutual: true,
+        )
+      );
+      
+      return true;
+    } catch (e) {
+      _logger.warning('Error accepting friend request: $e');
+      return false;
+    }
+  }
+  
+  /// Reject a friend request
+  Future<bool> rejectFriendRequest(String toUserId, String fromUserId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      // Update request status
+      await _database.updateFriendRequestStatus(fromUserId, toUserId, 'rejected');
+      return true;
+    } catch (e) {
+      _logger.warning('Error rejecting friend request: $e');
+      return false;
+    }
+  }
+  
+  /// Cancel a pending friend request
+  Future<bool> cancelFriendRequest(String fromUserId, String toUserId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      // Update request status
+      await _database.updateFriendRequestStatus(fromUserId, toUserId, 'cancelled');
+      return true;
+    } catch (e) {
+      _logger.warning('Error cancelling friend request: $e');
+      return false;
+    }
+  }
+  
+  /// Remove a friend connection between two users
+  Future<bool> removeFriend(String userId1, String userId2) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      // Remove connection in both directions
+      await _database.removeSocialConnection(userId1, userId2, 'friend');
+      await _database.removeSocialConnection(userId2, userId1, 'friend');
+      return true;
+    } catch (e) {
+      _logger.warning('Error removing friend connection: $e');
+      return false;
+    }
+  }
+  
+  /// Block a user
+  Future<bool> blockUser(String userId, String blockedUserId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      // Create a block record
+      final blockId = const Uuid().v4();
+      await _database.saveUserBlock(blockId, userId, blockedUserId, DateTime.now());
+      return true;
+    } catch (e) {
+      _logger.warning('Error blocking user: $e');
+      return false;
+    }
+  }
+  
+  /// Unblock a user
+  Future<bool> unblockUser(String userId, String blockedUserId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      await _database.removeUserBlock(userId, blockedUserId);
+      return true;
+    } catch (e) {
+      _logger.warning('Error unblocking user: $e');
+      return false;
+    }
+  }
+  
+  /// Check if a user is blocked
+  Future<bool> isUserBlocked(String userId, String blockedUserId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      return await _database.isUserBlocked(userId, blockedUserId);
+    } catch (e) {
+      _logger.warning('Error checking if user is blocked: $e');
+      return false;
+    }
+  }
+  
+  /// Get list of blocked users
+  Future<List<String>> getBlockedUsers(String userId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      return await _database.getBlockedUsers(userId);
+    } catch (e) {
+      _logger.warning('Error retrieving blocked users: $e');
+      return [];
+    }
+  }
+  
+  /// Save a leaderboard entry
+  Future<bool> saveLeaderboardEntry(LeaderboardEntry entry) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      await _database.saveLeaderboardEntry(entry);
+      return true;
+    } catch (e) {
+      _logger.warning('Error saving leaderboard entry: $e');
+      return false;
+    }
+  }
+  
+  /// Get leaderboard entries for a specific type and timeframe
+  Future<List<LeaderboardEntry>> getLeaderboardEntries(String leaderboardType, String timeframe, 
+    {String? regionCode, int limit = 100, int offset = 0}) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      return await _database.getLeaderboardEntries(
+        leaderboardType, 
+        timeframe, 
+        regionCode: regionCode, 
+        limit: limit, 
+        offset: offset
+      );
+    } catch (e) {
+      _logger.warning('Error retrieving leaderboard entries: $e');
+      return [];
+    }
+  }
+  
+  /// Get a user's ranking in a leaderboard
+  Future<LeaderboardEntry?> getUserLeaderboardEntry(String userId, String leaderboardType, String timeframe, 
+    {String? regionCode}) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      return await _database.getUserLeaderboardEntry(
+        userId, 
+        leaderboardType, 
+        timeframe, 
+        regionCode: regionCode
+      );
+    } catch (e) {
+      _logger.warning('Error retrieving user leaderboard entry: $e');
+      return null;
+    }
+  }
+  
+  /// Save shared content
+  Future<String?> saveSharedContent(SharedContent content) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      await _database.saveSharedContent(content);
+      return content.id;
+    } catch (e) {
+      _logger.warning('Error saving shared content: $e');
+      return null;
+    }
+  }
+  
+  /// Get shared content for a user
+  Future<List<SharedContent>> getSharedContentForUser(String userId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      return await _database.getSharedContentForUser(userId);
+    } catch (e) {
+      _logger.warning('Error retrieving shared content: $e');
+      return [];
+    }
+  }
+  
+  /// Search for users by name
+  Future<List<UserProfile>> searchUserProfiles(String query) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      return await _database.searchUserProfiles(query);
+    } catch (e) {
+      _logger.warning('Error searching user profiles: $e');
+      return [];
+    }
+  }
+  
   /// Check if an operation is allowed based on user's privacy settings
   Future<bool> checkPrivacyPermission(String dataType, String operation) async {
     if (!_isInitialized) await initialize();

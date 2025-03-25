@@ -19,6 +19,9 @@ import 'package:going50/services/gamification/challenge_service.dart';
 import 'package:going50/services/permission_service.dart';
 import 'package:going50/services/background/background_service.dart';
 import 'package:going50/services/background/notification_service.dart';
+import 'package:going50/services/social/social_service.dart';
+import 'package:going50/services/social/leaderboard_service.dart';
+import 'package:going50/services/social/sharing_service.dart';
 import 'package:logging/logging.dart';
 
 /// Global instance of the service locator
@@ -203,6 +206,29 @@ void _registerServices() {
   serviceLocator.registerLazySingleton<NotificationService>(
     () => NotificationService(
       serviceLocator<PreferencesService>(),
+    ),
+  );
+  
+  // Register Social Services
+  serviceLocator.registerLazySingleton<SocialService>(
+    () => SocialService(
+      serviceLocator<DataStorageManager>(),
+      serviceLocator<UserService>(),
+      serviceLocator<PrivacyService>(),
+    ),
+  );
+  
+  serviceLocator.registerLazySingleton<LeaderboardService>(
+    () => LeaderboardService(
+      serviceLocator<DataStorageManager>(),
+      serviceLocator<PerformanceMetricsService>(),
+    ),
+  );
+  
+  serviceLocator.registerLazySingleton<SharingService>(
+    () => SharingService(
+      serviceLocator<DataStorageManager>(),
+      serviceLocator<PrivacyService>(),
     ),
   );
   

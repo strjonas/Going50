@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:going50/core_models/user_profile.dart';
+import 'package:going50/services/social/social_service.dart';
+import 'package:going50/services/social/leaderboard_service.dart';
+import 'package:going50/services/social/sharing_service.dart';
 
 /// Provider for social features
 ///
@@ -8,6 +11,11 @@ import 'package:going50/core_models/user_profile.dart';
 /// - Providing leaderboard functionality
 /// - Handling content sharing
 class SocialProvider extends ChangeNotifier {
+  // Dependencies
+  final SocialService _socialService;
+  final LeaderboardService _leaderboardService;
+  final SharingService _sharingService;
+  
   // State
   List<UserProfile> _friends = [];
   List<Map<String, dynamic>> _leaderboardEntries = [];
@@ -37,79 +45,30 @@ class SocialProvider extends ChangeNotifier {
   String get timeframe => _timeframe;
   
   /// Constructor
-  SocialProvider() {
-    _loadMockData();
+  SocialProvider(this._socialService, this._leaderboardService, this._sharingService) {
+    _initialize();
   }
   
-  /// Load mock friends and leaderboard data for development
-  void _loadMockData() {
+  /// Initialize the provider
+  void _initialize() {
     _setLoading(true);
     
+    // Subscribe to social service events
+    _socialService.socialEventStream.listen(_handleSocialEvent);
+    _socialService.friendsStream.listen(_handleFriendsUpdate);
+    
+    // Load initial data
+    _loadInitialData();
+  }
+  
+  /// Load initial data 
+  Future<void> _loadInitialData() async {
     try {
-      // Mock friends data
-      _friends = [
-        UserProfile(
-          id: 'friend1',
-          name: 'Alex Johnson',
-          createdAt: DateTime.now().subtract(const Duration(days: 100)),
-          isPublic: true,
-          allowDataUpload: true,
-        ),
-        UserProfile(
-          id: 'friend2',
-          name: 'Jamie Smith',
-          createdAt: DateTime.now().subtract(const Duration(days: 50)),
-          isPublic: true,
-          allowDataUpload: false,
-        ),
-        UserProfile(
-          id: 'friend3',
-          name: 'Sam Williams',
-          createdAt: DateTime.now().subtract(const Duration(days: 20)),
-          isPublic: true,
-          allowDataUpload: true,
-        ),
-      ];
+      // Load friends
+      _friends = _socialService.friends;
       
-      // Mock leaderboard data
-      _leaderboardEntries = [
-        {
-          'rank': 1,
-          'userId': 'user1',
-          'name': 'Taylor Green',
-          'score': 95,
-          'trend': 'up',
-        },
-        {
-          'rank': 2,
-          'userId': 'user2',
-          'name': 'Jordan Rivera',
-          'score': 92,
-          'trend': 'same',
-        },
-        {
-          'rank': 3,
-          'userId': 'friend1',
-          'name': 'Alex Johnson',
-          'score': 88,
-          'trend': 'up',
-          'isFriend': true,
-        },
-        {
-          'rank': 4,
-          'userId': 'user3',
-          'name': 'Casey Lee',
-          'score': 85,
-          'trend': 'down',
-        },
-        {
-          'rank': 5,
-          'userId': 'user4',
-          'name': 'Morgan Chen',
-          'score': 82,
-          'trend': 'up',
-        },
-      ];
+      // Load leaderboard data
+      await _refreshLeaderboard();
       
       notifyListeners();
     } catch (e) {
@@ -119,23 +78,67 @@ class SocialProvider extends ChangeNotifier {
     }
   }
   
+  /// Handle social event
+  void _handleSocialEvent(Map<String, dynamic> event) {
+    final eventType = event['type'] as String;
+    
+    switch (eventType) {
+      case 'friend_added':
+      case 'friend_removed':
+      case 'request_accepted':
+        // Refresh friends list
+        _friends = _socialService.friends;
+        notifyListeners();
+        break;
+        
+      case 'content_shared':
+      case 'content_shared_external':
+        // Nothing to do here, just informational
+        break;
+        
+      default:
+        // Unknown event
+        break;
+    }
+  }
+  
+  /// Handle friends update
+  void _handleFriendsUpdate(List<UserProfile> friends) {
+    _friends = friends;
+    notifyListeners();
+  }
+  
   /// Set the leaderboard type
-  void setLeaderboardType(String type) {
+  Future<void> setLeaderboardType(String type) async {
     if (_leaderboardType != type) {
       _leaderboardType = type;
-      // In a real implementation, this would refresh the data
-      // but for now we'll just notify listeners
+      await _refreshLeaderboard();
       notifyListeners();
     }
   }
   
   /// Set the leaderboard timeframe
-  void setTimeframe(String timeframe) {
+  Future<void> setTimeframe(String timeframe) async {
     if (_timeframe != timeframe) {
       _timeframe = timeframe;
-      // In a real implementation, this would refresh the data
-      // but for now we'll just notify listeners
+      await _refreshLeaderboard();
       notifyListeners();
+    }
+  }
+  
+  /// Refresh leaderboard data
+  Future<void> _refreshLeaderboard() async {
+    _setLoading(true);
+    
+    try {
+      _leaderboardEntries = await _leaderboardService.getLeaderboard(
+        type: _leaderboardType,
+        timeframe: _timeframe,
+      );
+    } catch (e) {
+      _setError('Failed to load leaderboard: $e');
+    } finally {
+      _setLoading(false);
     }
   }
   
@@ -157,12 +160,18 @@ class SocialProvider extends ChangeNotifier {
     _setLoading(true);
     
     try {
-      // In a real implementation, this would handle the actual sharing
-      // but for now we'll just simulate success
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Get current user ID (in a real implementation, this would come from a user service)
+      const userId = 'current_user_id';
+      
+      final result = await _sharingService.shareContent(
+        userId: userId,
+        contentType: contentType,
+        contentId: contentId,
+        shareType: shareType,
+      );
       
       // Return success
-      return true;
+      return result != null;
     } catch (e) {
       _setError('Failed to share content: $e');
       return false;
@@ -186,12 +195,14 @@ class SocialProvider extends ChangeNotifier {
     _setLoading(true);
     
     try {
-      // In a real implementation, this would handle the actual friend request
-      // but for now we'll just simulate success
-      await Future.delayed(const Duration(milliseconds: 500));
+      final success = await _socialService.sendFriendRequest(userId);
       
-      // Return success
-      return true;
+      if (success) {
+        // No need to update friends list yet, as this is just a request
+        notifyListeners();
+      }
+      
+      return success;
     } catch (e) {
       _setError('Failed to add friend: $e');
       return false;
@@ -205,16 +216,16 @@ class SocialProvider extends ChangeNotifier {
     _setLoading(true);
     
     try {
-      // In a real implementation, this would handle the actual friend removal
-      // but for now we'll just simulate success
-      await Future.delayed(const Duration(milliseconds: 500));
+      final success = await _socialService.removeFriend(friendId);
       
-      // Remove from local list
-      _friends.removeWhere((friend) => friend.id == friendId);
-      notifyListeners();
+      if (success) {
+        // Friends list should get updated via the stream listener
+        // but to be safe, update it directly too
+        _friends.removeWhere((friend) => friend.id == friendId);
+        notifyListeners();
+      }
       
-      // Return success
-      return true;
+      return success;
     } catch (e) {
       _setError('Failed to remove friend: $e');
       return false;

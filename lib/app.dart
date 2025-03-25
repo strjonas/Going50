@@ -16,6 +16,9 @@ import 'presentation/screens/onboarding/onboarding_screen.dart';
 import 'services/user/user_service.dart';
 import 'services/user/preferences_service.dart';
 import 'services/user/privacy_service.dart';
+import 'services/social/social_service.dart';
+import 'services/social/leaderboard_service.dart';
+import 'services/social/sharing_service.dart';
 
 /// The main application widget for Going50.
 ///
@@ -87,7 +90,11 @@ class _AppState extends State<App> {
           )
         ),
         ChangeNotifierProvider(
-          create: (_) => SocialProvider()),
+          create: (_) => SocialProvider(
+            serviceLocator<SocialService>(),
+            serviceLocator<LeaderboardService>(),
+            serviceLocator<SharingService>(),
+          )),
         // Add Privacy Service Provider
         Provider<PrivacyService>(
           create: (_) => serviceLocator<PrivacyService>(),

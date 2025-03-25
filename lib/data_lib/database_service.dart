@@ -154,6 +154,27 @@ class SocialInteractionsTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class FriendRequestsTable extends Table {
+  TextColumn get id => text().withLength(min: 36, max: 36)();
+  TextColumn get fromUserId => text().references(UserProfilesTable, #id)();
+  TextColumn get toUserId => text().references(UserProfilesTable, #id)();
+  DateTimeColumn get requestedAt => dateTime()();
+  TextColumn get status => text()(); // 'pending', 'accepted', 'rejected', 'cancelled'
+  
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class UserBlocksTable extends Table {
+  TextColumn get id => text().withLength(min: 36, max: 36)();
+  TextColumn get userId => text().references(UserProfilesTable, #id)();
+  TextColumn get blockedUserId => text().references(UserProfilesTable, #id)();
+  DateTimeColumn get blockedAt => dateTime()();
+  
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 class SharedContentTable extends Table {
   TextColumn get id => text().withLength(min: 36, max: 36)();
   TextColumn get userId => text().references(UserProfilesTable, #id)();
@@ -299,6 +320,8 @@ class SyncStatusTable extends Table {
   DataPrivacySettingsTable,
   SocialConnectionsTable,
   SocialInteractionsTable,
+  FriendRequestsTable,
+  UserBlocksTable,
   SharedContentTable,
   UserPreferencesTable,
   FeedbackEffectivenessTable,
@@ -331,6 +354,8 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(dataPrivacySettingsTable);
           await m.createTable(socialConnectionsTable);
           await m.createTable(socialInteractionsTable);
+          await m.createTable(friendRequestsTable);
+          await m.createTable(userBlocksTable);
           await m.createTable(sharedContentTable);
           await m.createTable(userPreferencesTable);
           await m.createTable(feedbackEffectivenessTable);
@@ -806,11 +831,271 @@ class AppDatabase extends _$AppDatabase {
     )).toList();
   }
   
+  // Friend request methods
+  Future<int> saveFriendRequest(String id, String fromUserId, String toUserId, DateTime requestedAt, String status) async {
+    return into(friendRequestsTable).insert(
+      FriendRequestsTableCompanion.insert(
+        id: id,
+        fromUserId: fromUserId,
+        toUserId: toUserId,
+        requestedAt: requestedAt,
+        status: status,
+      ),
+      mode: InsertMode.insertOrReplace,
+    );
+  }
+  
+  Future<List<String>> getReceivedFriendRequests(String userId) async {
+    final query = select(friendRequestsTable)
+      ..where((t) => t.toUserId.equals(userId) & t.status.equals('pending'));
+    
+    final results = await query.get();
+    
+    return results.map((row) => row.fromUserId).toList();
+  }
+  
+  Future<List<String>> getSentFriendRequests(String userId) async {
+    final query = select(friendRequestsTable)
+      ..where((t) => t.fromUserId.equals(userId) & t.status.equals('pending'));
+    
+    final results = await query.get();
+    
+    return results.map((row) => row.toUserId).toList();
+  }
+  
+  Future<int> updateFriendRequestStatus(String fromUserId, String toUserId, String status) async {
+    final query = update(friendRequestsTable)
+      ..where((t) => t.fromUserId.equals(fromUserId) & t.toUserId.equals(toUserId));
+      
+    return query.write(FriendRequestsTableCompanion(
+      status: Value(status),
+    ));
+  }
+  
+  Future<int> deleteFriendRequest(String fromUserId, String toUserId) async {
+    final query = delete(friendRequestsTable)
+      ..where((t) => t.fromUserId.equals(fromUserId) & t.toUserId.equals(toUserId));
+      
+    return query.go();
+  }
+  
+  // Social connection management
+  Future<void> removeSocialConnection(String userId, String connectedUserId, String connectionType) async {
+    final query = delete(socialConnectionsTable)
+      ..where((t) => t.userId.equals(userId) & 
+                      t.connectedUserId.equals(connectedUserId) &
+                      t.connectionType.equals(connectionType));
+                      
+    await query.go();
+  }
+  
+  // User blocks methods
+  Future<int> saveUserBlock(String id, String userId, String blockedUserId, DateTime blockedAt) async {
+    return into(userBlocksTable).insert(
+      UserBlocksTableCompanion.insert(
+        id: id,
+        userId: userId,
+        blockedUserId: blockedUserId,
+        blockedAt: blockedAt,
+      ),
+      mode: InsertMode.insertOrReplace,
+    );
+  }
+  
+  Future<void> removeUserBlock(String userId, String blockedUserId) async {
+    final query = delete(userBlocksTable)
+      ..where((t) => t.userId.equals(userId) & t.blockedUserId.equals(blockedUserId));
+      
+    await query.go();
+  }
+  
+  Future<bool> isUserBlocked(String userId, String blockedUserId) async {
+    final query = select(userBlocksTable)
+      ..where((t) => t.userId.equals(userId) & t.blockedUserId.equals(blockedUserId));
+      
+    final result = await query.get();
+    return result.isNotEmpty;
+  }
+  
+  Future<List<String>> getBlockedUsers(String userId) async {
+    final query = select(userBlocksTable)
+      ..where((t) => t.userId.equals(userId));
+      
+    final results = await query.get();
+    return results.map((row) => row.blockedUserId).toList();
+  }
+  
+  // Leaderboard methods
+  Future<int> saveLeaderboardEntry(LeaderboardEntry entry) async {
+    return into(leaderboardEntriesTable).insert(
+      LeaderboardEntriesTableCompanion.insert(
+        id: entry.id,
+        leaderboardType: entry.leaderboardType,
+        timeframe: entry.timeframe,
+        userId: entry.userId,
+        regionCode: Value(entry.regionCode),
+        rank: entry.rank,
+        score: entry.score,
+        recordedAt: entry.recordedAt,
+        daysRetained: Value(entry.daysRetained),
+      ),
+      mode: InsertMode.insertOrReplace,
+    );
+  }
+  
+  Future<List<LeaderboardEntry>> getLeaderboardEntries(String leaderboardType, String timeframe, {String? regionCode, int limit = 100, int offset = 0}) async {
+    var query = select(leaderboardEntriesTable)
+      ..where((t) => t.leaderboardType.equals(leaderboardType) & t.timeframe.equals(timeframe))
+      ..orderBy([(t) => OrderingTerm.asc(t.rank)])
+      ..limit(limit, offset: offset);
+      
+    if (regionCode != null) {
+      query = select(leaderboardEntriesTable)
+        ..where((t) => t.leaderboardType.equals(leaderboardType) & 
+                        t.timeframe.equals(timeframe) &
+                        t.regionCode.equals(regionCode))
+        ..orderBy([(t) => OrderingTerm.asc(t.rank)])
+        ..limit(limit, offset: offset);
+    }
+    
+    final results = await query.get();
+    
+    return results.map((row) => LeaderboardEntry(
+      id: row.id,
+      leaderboardType: row.leaderboardType,
+      timeframe: row.timeframe,
+      userId: row.userId,
+      regionCode: row.regionCode,
+      rank: row.rank,
+      score: row.score,
+      recordedAt: row.recordedAt,
+      daysRetained: row.daysRetained,
+    )).toList();
+  }
+  
+  Future<LeaderboardEntry?> getUserLeaderboardEntry(String userId, String leaderboardType, String timeframe, {String? regionCode}) async {
+    var query = select(leaderboardEntriesTable)
+      ..where((t) => t.userId.equals(userId) & 
+                      t.leaderboardType.equals(leaderboardType) & 
+                      t.timeframe.equals(timeframe));
+                      
+    if (regionCode != null) {
+      query = select(leaderboardEntriesTable)
+        ..where((t) => t.userId.equals(userId) & 
+                        t.leaderboardType.equals(leaderboardType) & 
+                        t.timeframe.equals(timeframe) &
+                        t.regionCode.equals(regionCode));
+    }
+    
+    final results = await query.get();
+    
+    if (results.isEmpty) {
+      return null;
+    }
+    
+    final row = results.first;
+    return LeaderboardEntry(
+      id: row.id,
+      leaderboardType: row.leaderboardType,
+      timeframe: row.timeframe,
+      userId: row.userId,
+      regionCode: row.regionCode,
+      rank: row.rank,
+      score: row.score,
+      recordedAt: row.recordedAt,
+      daysRetained: row.daysRetained,
+    );
+  }
+  
+  // Shared content methods
+  Future<int> saveSharedContent(SharedContent content) async {
+    return into(sharedContentTable).insert(
+      SharedContentTableCompanion.insert(
+        id: content.id,
+        userId: content.userId,
+        contentType: content.contentType,
+        contentId: content.contentId,
+        shareType: content.shareType,
+        externalPlatform: Value(content.externalPlatform),
+        shareUrl: Value(content.shareUrl),
+        sharedAt: content.sharedAt,
+        isActive: Value(content.isActive),
+      ),
+      mode: InsertMode.insertOrReplace,
+    );
+  }
+  
+  Future<List<SharedContent>> getSharedContentForUser(String userId) async {
+    final query = select(sharedContentTable)
+      ..where((t) => t.userId.equals(userId) & t.isActive.equals(true))
+      ..orderBy([(t) => OrderingTerm.desc(t.sharedAt)]);
+      
+    final results = await query.get();
+    
+    return results.map((row) => SharedContent(
+      id: row.id,
+      userId: row.userId,
+      contentType: row.contentType,
+      contentId: row.contentId,
+      shareType: row.shareType,
+      externalPlatform: row.externalPlatform,
+      shareUrl: row.shareUrl,
+      sharedAt: row.sharedAt,
+      isActive: row.isActive,
+    )).toList();
+  }
+  
+  // User search method
+  Future<List<UserProfile>> searchUserProfiles(String query) async {
+    // Case-insensitive search for users by name, limit to 20 results
+    final results = await customSelect(
+      'SELECT * FROM user_profiles_table WHERE name LIKE ? LIMIT 20',
+      variables: [Variable('%$query%')],
+      readsFrom: {userProfilesTable},
+    ).get();
+    
+    return results.map((row) {
+      final data = userProfilesTable.map(row.data);
+      return UserProfile(
+        id: data.id,
+        name: data.name ?? '',
+        createdAt: data.createdAt,
+        lastUpdatedAt: data.lastUpdatedAt,
+        isPublic: data.isPublic,
+        allowDataUpload: data.allowDataUpload,
+      );
+    }).toList();
+  }
+  
   /// Close the database connection
   @override
   Future<void> close() async {
     return executor.close();
   }
+
+  @override
+  Iterable<TableInfo<Table, Object?>> get allTables => [
+    tripsTable,
+    tripDataPointsTable,
+    drivingEventsTable,
+    userProfilesTable,
+    dataPrivacySettingsTable,
+    socialConnectionsTable,
+    socialInteractionsTable,
+    friendRequestsTable,
+    userBlocksTable,
+    sharedContentTable,
+    performanceMetricsTable,
+    badgesTable,
+    userPreferencesTable,
+    feedbackEffectivenessTable,
+    challengesTable,
+    userChallengesTable,
+    streaksTable,
+    leaderboardEntriesTable,
+    externalIntegrationsTable,
+    syncStatusTable
+  ];
 }
 
 LazyDatabase _openConnection() {
