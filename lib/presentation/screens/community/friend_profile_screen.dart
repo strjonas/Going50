@@ -5,6 +5,8 @@ import 'package:going50/core/theme/app_colors.dart';
 import 'package:going50/core_models/user_profile.dart';
 import 'package:going50/presentation/providers/social_provider.dart';
 import 'package:going50/presentation/providers/insights_provider.dart';
+import 'package:going50/services/gamification/achievement_service.dart';
+import 'package:going50/services/service_locator.dart';
 
 /// FriendProfileScreen displays another user's eco-driving profile.
 ///
@@ -256,139 +258,168 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   
   /// Builds the achievement showcase grid
   Widget _buildAchievementShowcase(BuildContext context, UserProfile friend) {
-    // Mock achievements - in a real app, this would come from a service
-    final achievements = [
-      {'type': 'eco_master', 'level': 2, 'name': 'Eco Master', 'description': 'Achieved excellent eco-scores'},
-      {'type': 'smooth_driver', 'level': 3, 'name': 'Smooth Driver', 'description': 'Mastered smooth acceleration and braking'},
-      {'type': 'fuel_saver', 'level': 1, 'name': 'Fuel Saver', 'description': 'Saved significant fuel through eco-driving'},
-      {'type': 'streak_keeper', 'level': 2, 'name': 'Streak Keeper', 'description': 'Maintained eco-driving streak'},
-      {'type': 'carbon_reducer', 'level': 2, 'name': 'Carbon Reducer', 'description': 'Significantly reduced carbon emissions'},
-    ];
+    final achievementService = serviceLocator<AchievementService>();
     
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: achievementService.getUserBadges(friend.id),
+      builder: (context, snapshot) {
+        // Handle loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        
+        // Handle error state
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              'Could not load achievements: ${snapshot.error}',
+              style: const TextStyle(color: Colors.red),
+            ),
+          );
+        }
+        
+        // Handle empty achievements
+        final achievements = snapshot.data ?? [];
+        if (achievements.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text('No achievements yet'),
+          );
+        }
+        
+        // Show badges
+        return Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Achievements',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  // Show all achievements
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Full achievements view coming soon'),
-                      duration: Duration(seconds: 2),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Achievements',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      // Show all achievements
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Full achievements view coming soon'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    child: const Text('See All'),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 8),
+              
+              // Achievements grid
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  childAspectRatio: 0.9,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemCount: achievements.length > 5 ? 5 : achievements.length,
+                itemBuilder: (context, index) {
+                  final achievement = achievements[index];
+                  return _buildAchievementBadge(
+                    context,
+                    achievement['badgeType'] as String,
+                    achievement['level'] as int,
+                    achievement['name'] as String,
+                    achievement['description'] as String,
                   );
                 },
-                child: const Text('See All'),
+              ),
+              
+              const SizedBox(height: 8),
+              
+              // Challenge progress
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.emoji_events_outlined,
+                        color: AppColors.secondary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Current Challenge',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Eco Week: Maintain 90+ eco-score for 7 days',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: 0.7,
+                              backgroundColor: Colors.grey.shade300,
+                              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.secondary),
+                              minHeight: 8,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          
-          const SizedBox(height: 8),
-          
-          // Achievements grid
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              childAspectRatio: 0.9,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: achievements.length,
-            itemBuilder: (context, index) {
-              final achievement = achievements[index];
-              return _buildAchievementBadge(
-                context,
-                achievement['type'] as String,
-                achievement['level'] as int,
-                achievement['name'] as String,
-                achievement['description'] as String,
-              );
-            },
-          ),
-          
-          const SizedBox(height: 8),
-          
-          // Challenge progress
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.emoji_events_outlined,
-                    color: AppColors.secondary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Current Challenge',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Eco Week: Maintain 90+ eco-score for 7 days',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: 0.7,
-                          backgroundColor: Colors.grey.shade300,
-                          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.secondary),
-                          minHeight: 8,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
   
   /// Builds a single achievement badge
   Widget _buildAchievementBadge(
     BuildContext context,
-    String type,
+    String badgeType,
     int level,
     String name,
     String description,
@@ -397,7 +428,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
     Color color;
     
     // Determine icon and color based on achievement type
-    switch (type) {
+    switch (badgeType) {
+      case 'eco_expert':
       case 'eco_master':
         iconData = Icons.star;
         color = AppColors.primary;
@@ -407,16 +439,26 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         color = Colors.blue;
         break;
       case 'fuel_saver':
+      case 'fuel_efficiency':
         iconData = Icons.local_gas_station;
         color = Colors.orange;
         break;
       case 'streak_keeper':
+      case 'consistent_driver':
         iconData = Icons.local_fire_department;
         color = Colors.red;
         break;
       case 'carbon_reducer':
         iconData = Icons.cloud;
         color = Colors.green;
+        break;
+      case 'road_veteran':
+        iconData = Icons.map;
+        color = Colors.purple;
+        break;
+      case 'speed_master':
+        iconData = Icons.speed;
+        color = Colors.amber;
         break;
       default:
         iconData = Icons.emoji_events;
@@ -428,67 +470,50 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
         // Show achievement details
         _showAchievementDetails(context, name, description, level);
       },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: color,
-                    width: 2,
-                  ),
-                ),
-                child: Icon(
-                  iconData,
+      child: Container(
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: color.withOpacity(0.3),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              iconData,
+              color: color,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              name,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'Lvl $level',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
                   color: color,
-                  size: 32,
                 ),
               ),
-              if (level > 1)
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: color,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Text(
-                      level.toString(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            name,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
             ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

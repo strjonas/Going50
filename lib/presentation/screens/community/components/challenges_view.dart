@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:going50/core/theme/app_colors.dart';
 import 'package:going50/core/constants/route_constants.dart';
 import 'package:going50/presentation/screens/community/components/shared_filters.dart';
+import 'package:going50/services/gamification/challenge_service.dart';
+import 'package:going50/services/service_locator.dart';
+import 'package:going50/services/user/user_service.dart';
+import 'package:going50/core_models/gamification_models.dart';
 
 /// ChallengesView displays active and available challenges.
 ///
@@ -30,6 +34,19 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
   final List<String> _filterOptions = ["Active", "Available", "Completed"];
   final List<String> _timeFilterOptions = ["Week", "Month", "All time"];
   
+  // Services
+  final ChallengeService _challengeService = serviceLocator<ChallengeService>();
+  final UserService _userService = serviceLocator<UserService>();
+  
+  // Challenge data
+  List<UserChallenge> _activeChallenges = [];
+  List<Challenge> _availableChallenges = [];
+  List<UserChallenge> _completedChallenges = [];
+  
+  // Loading state
+  bool _isLoading = true;
+  String? _errorMessage;
+  
   @override
   void initState() {
     super.initState();
@@ -52,6 +69,81 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
         });
       }
     });
+    
+    // Load challenges
+    _loadChallenges();
+  }
+  
+  /// Load challenges from service
+  Future<void> _loadChallenges() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
+    try {
+      final currentUser = _userService.currentUser;
+      
+      if (currentUser == null) {
+        // Try to initialize user service if user is not available
+        await _userService.initialize();
+        
+        // Check again after initialization
+        final user = _userService.currentUser;
+        if (user == null) {
+          if (mounted) {
+            setState(() {
+              _errorMessage = 'User not found. Please restart the app.';
+              _isLoading = false;
+            });
+          }
+          return;
+        }
+      }
+      
+      // Get all challenges
+      final allChallenges = await _challengeService.getAllChallenges();
+      
+      // Get user challenges
+      final userChallenges = await _challengeService.getUserChallenges(
+        currentUser?.id ?? '',
+      );
+      
+      if (mounted) {
+        setState(() {
+          // Set up active challenges
+          _activeChallenges = userChallenges
+              .where((uc) => !uc.isCompleted)
+              .toList();
+          
+          // Set up completed challenges
+          _completedChallenges = userChallenges
+              .where((uc) => uc.isCompleted)
+              .toList();
+          
+          // Set up available challenges (challenges not started by user)
+          final userChallengeIds = userChallenges
+              .where((uc) => !uc.isCompleted) // Only consider active challenges
+              .map((uc) => uc.challengeId)
+              .toSet();
+          
+          _availableChallenges = allChallenges
+              .where((c) => !userChallengeIds.contains(c.id))
+              .toList();
+          
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load challenges: $e';
+          _isLoading = false;
+        });
+      }
+    }
   }
   
   @override
@@ -91,144 +183,285 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
         ),
         
         Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildActiveChallengesTab(),
-              _buildAvailableChallengesTab(),
-              _buildCompletedChallengesTab(),
-            ],
-          ),
+          child: _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(),
+                )
+              : _errorMessage != null
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _loadChallenges,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildActiveChallengesTab(),
+                        _buildAvailableChallengesTab(),
+                        _buildCompletedChallengesTab(),
+                      ],
+                    ),
         ),
       ],
     );
   }
   
   Widget _buildActiveChallengesTab() {
-    // Mock data - in a real app, this would come from a service or provider
-    final List<Map<String, dynamic>> activeChallenges = [
-      {
-        'id': 'daily_eco_score_75',
-        'title': 'Green Commuter',
-        'description': 'Achieve at least 75 eco-score on a trip today',
-        'iconName': 'eco',
-        'progress': 3,
-        'target': 5,
-        'timeRemaining': '3 days',
-        'participants': 243,
-      },
-      {
-        'id': 'achievement_fuel_saved_20',
-        'title': 'Fuel Miser',
-        'description': 'Save 20 liters of fuel through eco-driving',
-        'iconName': 'local_gas_station',
-        'progress': 2.7,
-        'target': 5,
-        'timeRemaining': '5 days',
-        'participants': 189,
-      },
-      {
-        'id': 'weekly_trips_5',
-        'title': 'Regular Driver',
-        'description': 'Complete 5 trips this week',
-        'iconName': 'repeat',
-        'progress': 1,
-        'target': 3,
-        'timeRemaining': '2 days',
-        'participants': 310,
-      },
-    ];
+    if (_activeChallenges.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.emoji_events_outlined,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No active challenges',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                // Switch to available challenges tab
+                _tabController.animateTo(1);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Find Challenges'),
+            ),
+          ],
+        )
+      );
+    }
     
-    return activeChallenges.isEmpty
-        ? const Center(child: Text('No active challenges'))
-        : ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            itemCount: activeChallenges.length,
-            itemBuilder: (context, index) {
-              final challenge = activeChallenges[index];
-              return _buildActiveChallengeCard(challenge);
-            },
-          );
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: _activeChallenges.length,
+      itemBuilder: (context, index) {
+        final userChallenge = _activeChallenges[index];
+        
+        // Find the challenge definition
+        final challengeDef = _availableChallenges.firstWhere(
+          (c) => c.id == userChallenge.challengeId,
+          orElse: () => Challenge(
+            id: userChallenge.challengeId,
+            title: 'Unknown Challenge',
+            description: 'Challenge details not available',
+            type: 'unknown',
+            targetValue: 1,
+            metricType: 'unknown',
+          ),
+        );
+        
+        // Convert to the map format used by the UI
+        final challengeMap = {
+          'id': userChallenge.challengeId,
+          'title': challengeDef.title,
+          'description': challengeDef.description,
+          'iconName': challengeDef.iconName ?? 'emoji_events',
+          'progress': userChallenge.progress,
+          'target': challengeDef.targetValue,
+          'timeRemaining': _getTimeRemaining(challengeDef.type),
+          'participants': 100, // Default value
+        };
+        
+        return _buildActiveChallengeCard(challengeMap);
+      },
+    );
   }
   
   Widget _buildAvailableChallengesTab() {
-    // Mock data - in a real app, this would come from a service or provider
-    final List<Map<String, dynamic>> availableChallenges = [
-      {
-        'id': 'achievement_co2_reduced_50',
-        'title': 'Climate Guardian',
-        'description': 'Reduce CO2 emissions by 50kg',
-        'iconName': 'cloud',
-        'difficulty': 'Medium',
-        'reward': '100 points',
-        'duration': '7 days',
-        'participants': 156,
-      },
-      {
-        'id': 'daily_calm_driving_80',
-        'title': 'Zen Driver',
-        'description': 'Maintain a calm driving score of 80+ today',
-        'iconName': 'mood',
-        'difficulty': 'Hard',
-        'reward': '200 points',
-        'duration': '5 days',
-        'participants': 85,
-      },
-      {
-        'id': 'weekly_distance_100',
-        'title': 'Distance Champion',
-        'description': 'Drive 100km with eco-score above 80 this week',
-        'iconName': 'straighten',
-        'difficulty': 'Easy',
-        'reward': '75 points',
-        'duration': '10 days',
-        'participants': 230,
-      },
-    ];
+    if (_availableChallenges.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off_outlined,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No available challenges',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'You\'ve accepted all available challenges!',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        )
+      );
+    }
     
-    return availableChallenges.isEmpty
-        ? const Center(child: Text('No available challenges'))
-        : ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            itemCount: availableChallenges.length,
-            itemBuilder: (context, index) {
-              final challenge = availableChallenges[index];
-              return _buildAvailableChallengeCard(challenge);
-            },
-          );
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: _availableChallenges.length,
+      itemBuilder: (context, index) {
+        final challenge = _availableChallenges[index];
+        
+        // Convert to the map format used by the UI
+        final challengeMap = {
+          'id': challenge.id,
+          'title': challenge.title,
+          'description': challenge.description,
+          'iconName': challenge.iconName ?? 'emoji_events',
+          'difficulty': _getDifficultyText(challenge.difficultyLevel),
+          'reward': '${challenge.rewardValue} ${challenge.rewardType ?? 'points'}',
+          'duration': _getDurationText(challenge.type),
+          'participants': 100, // Default value
+        };
+        
+        return _buildAvailableChallengeCard(challengeMap);
+      },
+    );
   }
   
   Widget _buildCompletedChallengesTab() {
-    // Mock data - in a real app, this would come from a service or provider
-    final List<Map<String, dynamic>> completedChallenges = [
-      {
-        'id': 'weekly_active_days_5',
-        'title': 'Consistent Driver',
-        'description': 'Drive on 5 different days this week',
-        'iconName': 'event_available',
-        'completedDate': 'Apr 2, 2023',
-        'reward': '50 points',
-      },
-      {
-        'id': 'daily_idle_reduction',
-        'title': 'Idle Buster',
-        'description': 'Keep idling time under 3 minutes for all trips today',
-        'iconName': 'timer',
-        'completedDate': 'Mar 28, 2023',
-        'reward': '25 points',
-      },
-    ];
+    if (_completedChallenges.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.check_circle_outline,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No completed challenges',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                // Switch to available challenges tab
+                _tabController.animateTo(1);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Find Challenges'),
+            ),
+          ],
+        )
+      );
+    }
     
-    return completedChallenges.isEmpty
-        ? const Center(child: Text('No completed challenges'))
-        : ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            itemCount: completedChallenges.length,
-            itemBuilder: (context, index) {
-              final challenge = completedChallenges[index];
-              return _buildCompletedChallengeCard(challenge);
-            },
-          );
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: _completedChallenges.length,
+      itemBuilder: (context, index) {
+        final userChallenge = _completedChallenges[index];
+        
+        // Find the challenge definition
+        final challengeDef = _availableChallenges.firstWhere(
+          (c) => c.id == userChallenge.challengeId,
+          orElse: () => Challenge(
+            id: userChallenge.challengeId,
+            title: 'Unknown Challenge',
+            description: 'Challenge details not available',
+            type: 'unknown',
+            targetValue: 1,
+            metricType: 'unknown',
+          ),
+        );
+        
+        // Convert to the map format used by the UI
+        final challengeMap = {
+          'id': userChallenge.challengeId,
+          'title': challengeDef.title,
+          'description': challengeDef.description,
+          'iconName': challengeDef.iconName ?? 'emoji_events',
+          'completedDate': _formatDate(userChallenge.completedAt ?? DateTime.now()),
+          'reward': '${challengeDef.rewardValue} ${challengeDef.rewardType ?? 'points'}',
+        };
+        
+        return _buildCompletedChallengeCard(challengeMap);
+      },
+    );
+  }
+  
+  // Helper methods for formatting
+  String _getTimeRemaining(String challengeType) {
+    switch (challengeType) {
+      case 'daily':
+        return 'Today';
+      case 'weekly':
+        return '7 days';
+      case 'achievement':
+        return 'Ongoing';
+      default:
+        return 'Limited time';
+    }
+  }
+  
+  String _getDifficultyText(int? difficultyLevel) {
+    switch (difficultyLevel) {
+      case 1:
+        return 'Very Easy';
+      case 2:
+        return 'Easy';
+      case 3:
+        return 'Medium';
+      case 4:
+        return 'Hard';
+      case 5:
+        return 'Very Hard';
+      default:
+        return 'Medium';
+    }
+  }
+  
+  String _getDurationText(String challengeType) {
+    switch (challengeType) {
+      case 'daily':
+        return '1 day';
+      case 'weekly':
+        return '7 days';
+      case 'achievement':
+        return 'Ongoing';
+      default:
+        return 'Limited time';
+    }
+  }
+  
+  String _formatDate(DateTime date) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
   
   Widget _buildActiveChallengeCard(Map<String, dynamic> challenge) {
