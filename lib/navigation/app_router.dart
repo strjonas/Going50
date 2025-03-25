@@ -9,6 +9,7 @@ import '../presentation/screens/drive/trip_summary_screen.dart';
 import '../presentation/screens/insights/trip_history_screen.dart';
 import '../presentation/screens/insights/trip_detail_screen.dart';
 import '../presentation/screens/profile/settings_screen.dart';
+import '../presentation/screens/profile/privacy_settings_screen.dart';
 import '../presentation/screens/community/challenge_detail_screen.dart';
 import '../presentation/screens/community/friend_profile_screen.dart';
 
@@ -80,9 +81,7 @@ class AppRouter {
         
       case ProfileRoutes.privacySettings:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Privacy Settings Screen - To be implemented')),
-          ),
+          builder: (_) => const PrivacySettingsScreen(),
         );
         
       case ProfileRoutes.deviceConnection:
