@@ -10,6 +10,7 @@ import '../presentation/screens/insights/trip_history_screen.dart';
 import '../presentation/screens/insights/trip_detail_screen.dart';
 import '../presentation/screens/profile/settings_screen.dart';
 import '../presentation/screens/community/challenge_detail_screen.dart';
+import '../presentation/screens/community/friend_profile_screen.dart';
 
 /// AppRouter handles route management for the application.
 /// 
@@ -66,10 +67,9 @@ class AppRouter {
         );
         
       case CommunityRoutes.friendProfile:
+        final friendId = settings.arguments as String;
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Friend Profile Screen - To be implemented')),
-          ),
+          builder: (_) => FriendProfileScreen(friendId: friendId),
         );
         
       // Profile routes

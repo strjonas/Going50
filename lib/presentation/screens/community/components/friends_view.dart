@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:going50/core/theme/app_colors.dart';
 import 'package:going50/presentation/providers/social_provider.dart';
 import 'package:going50/core_models/user_profile.dart';
+import 'package:going50/core/constants/route_constants.dart';
 
 /// FriendsView displays the user's connections and allows finding new friends.
 ///
@@ -262,11 +263,9 @@ class _FriendsViewState extends State<FriendsView> {
               color: AppColors.secondary,
               onPressed: () {
                 // Navigate to friend profile
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Viewing ${friend.name}\'s profile'),
-                    duration: const Duration(seconds: 2),
-                  ),
+                Navigator.of(context).pushNamed(
+                  CommunityRoutes.friendProfile,
+                  arguments: friend.id,
                 );
               },
             ),
