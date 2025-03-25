@@ -15,6 +15,7 @@ import 'package:going50/services/user/user_service.dart';
 import 'package:going50/services/user/preferences_service.dart';
 import 'package:going50/services/user/privacy_service.dart';
 import 'package:going50/services/gamification/achievement_service.dart';
+import 'package:going50/services/gamification/challenge_service.dart';
 import 'package:going50/services/permission_service.dart';
 import 'package:logging/logging.dart';
 
@@ -136,6 +137,14 @@ void _registerServices() {
   // Register Achievement Service
   serviceLocator.registerLazySingleton<AchievementService>(
     () => AchievementService(
+      serviceLocator<DataStorageManager>(),
+      serviceLocator<PerformanceMetricsService>(),
+    ),
+  );
+
+  // Register Challenge Service
+  serviceLocator.registerLazySingleton<ChallengeService>(
+    () => ChallengeService(
       serviceLocator<DataStorageManager>(),
       serviceLocator<PerformanceMetricsService>(),
     ),

@@ -12,6 +12,7 @@ import 'package:going50/services/driving/trip_service.dart';
 import 'package:going50/services/permission_service.dart';
 import 'package:going50/services/service_locator.dart';
 import 'package:going50/services/gamification/achievement_service.dart';
+import 'package:going50/services/gamification/challenge_service.dart';
 
 // Model imports
 import 'package:going50/core_models/trip.dart';
@@ -53,6 +54,7 @@ class DrivingService extends ChangeNotifier {
   final TripService _tripService;
   late final PermissionService _permissionService;
   late final AchievementService _achievementService;
+  late final ChallengeService _challengeService;
   
   // Service state
   bool _isInitialized = false;
@@ -86,6 +88,7 @@ class DrivingService extends ChangeNotifier {
     _logger.info('DrivingService created');
     _permissionService = serviceLocator<PermissionService>();
     _achievementService = serviceLocator<AchievementService>();
+    _challengeService = serviceLocator<ChallengeService>();
     _setupEventListeners();
     _initializeServices();
   }
@@ -106,6 +109,9 @@ class DrivingService extends ChangeNotifier {
     
     // Listen for achievement events
     _achievementService.achievementEventStream.listen(_handleAchievementEvent);
+    
+    // Listen for challenge events
+    _challengeService.challengeEventStream.listen(_handleChallengeEvent);
     
     // Subscribe to data stream to forward data to other services
     _dataCollectionService.dataStream.listen(_handleCombinedData);
@@ -237,26 +243,53 @@ class DrivingService extends ChangeNotifier {
     _drivingEventController.add(drivingEvent);
   }
   
-  /// Handles achievement events by forwarding them to the event stream
-  void _handleAchievementEvent(AchievementEvent event) {
-    // Convert achievement event to driving event for UI notification
-    final drivingEvent = DrivingEvent(
-      id: _uuid.v4(),
-      tripId: _tripService.currentTrip?.id ?? 'no_trip',
-      timestamp: event.timestamp,
-      eventType: 'achievement_earned',
-      severity: 0.0, // Not a negative event
-      additionalData: {
-        'badgeType': event.badgeType,
-        'badgeName': event.badgeName,
-        'badgeDescription': event.badgeDescription,
-        'level': event.level,
-        'isUpgrade': event.isUpgrade,
-      },
-    );
-    
-    // Forward to unified event stream
-    _drivingEventController.add(drivingEvent);
+  /// Handles achievement events
+  void _handleAchievementEvent(dynamic event) {
+    try {
+      // Pass through any achievement events to the driving event stream
+      _drivingEventController.add(DrivingEvent(
+        id: _uuid.v4(),
+        tripId: _tripService.currentTrip?.id ?? 'none',
+        timestamp: DateTime.now(),
+        eventType: 'achievement_earned',
+        severity: 0.0, // Not a negative event
+        additionalData: {
+          'achievementType': event.badgeType,
+          'achievementName': event.badgeName,
+          'level': event.level,
+          'isUpgrade': event.isUpgrade,
+        },
+      ));
+      
+      _logger.info('Achievement earned: ${event.badgeName} level ${event.level}');
+    } catch (e) {
+      _logger.warning('Error handling achievement event: $e');
+    }
+  }
+  
+  /// Handles challenge events
+  void _handleChallengeEvent(dynamic event) {
+    try {
+      // Pass through any challenge events to the driving event stream
+      _drivingEventController.add(DrivingEvent(
+        id: _uuid.v4(),
+        tripId: _tripService.currentTrip?.id ?? 'none',
+        timestamp: DateTime.now(),
+        eventType: 'challenge_${event.eventType}',
+        severity: 0.0, // Not a negative event
+        additionalData: {
+          'challengeId': event.challengeId,
+          'challengeTitle': event.challengeTitle,
+          'progress': event.progress,
+          'targetValue': event.targetValue,
+          'isCompleted': event.isCompleted,
+        },
+      ));
+      
+      _logger.info('Challenge update: ${event.challengeTitle} - ${event.eventType}');
+    } catch (e) {
+      _logger.warning('Error handling challenge event: $e');
+    }
   }
   
   /// Handles errors by setting error message and updating status
@@ -449,6 +482,7 @@ class DrivingService extends ChangeNotifier {
         final userId = trip.userId;
         if (userId != null && userId.isNotEmpty) {
           _achievementService.checkAchievementsAfterTrip(trip, userId);
+          _challengeService.checkChallengesAfterTrip(trip, userId);
         }
         
         _updateDrivingStatus();
