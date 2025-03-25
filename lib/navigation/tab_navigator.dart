@@ -10,7 +10,14 @@ import '../presentation/screens/profile/profile_screen.dart';
 /// 
 /// This class manages the bottom navigation bar and tab switching.
 class TabNavigator extends StatefulWidget {
-  const TabNavigator({super.key});
+  /// Optional initial route to determine which tab to show first
+  final String? initialRoute;
+
+  /// Creates a tab navigator widget
+  const TabNavigator({
+    super.key,
+    this.initialRoute,
+  });
 
   @override
   State<TabNavigator> createState() => _TabNavigatorState();
@@ -58,6 +65,28 @@ class _TabNavigatorState extends State<TabNavigator> {
       activeIcon: Icons.person,
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Set the initial tab based on the initial route if provided
+    if (widget.initialRoute != null) {
+      _setInitialTab(widget.initialRoute!);
+    }
+  }
+  
+  /// Sets the initial tab based on the provided route
+  void _setInitialTab(String route) {
+    for (int i = 0; i < _tabs.length; i++) {
+      if (_tabs[i].route == route) {
+        setState(() {
+          _currentIndex = i;
+        });
+        return;
+      }
+    }
+  }
 
   void _onTabTapped(int index) {
     setState(() {

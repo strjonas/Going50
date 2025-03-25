@@ -13,6 +13,7 @@ import '../presentation/screens/profile/privacy_settings_screen.dart';
 import '../presentation/screens/profile/device_connection_screen.dart';
 import '../presentation/screens/community/challenge_detail_screen.dart';
 import '../presentation/screens/community/friend_profile_screen.dart';
+import '../navigation/tab_navigator.dart';
 
 /// AppRouter handles route management for the application.
 /// 
@@ -22,6 +23,15 @@ class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       // Tab routes are handled by the TabNavigator, so we don't need cases for them
+      // Add tab routes to handle direct navigation to tabs
+      case TabRoutes.driveTab:
+      case TabRoutes.insightsTab:
+      case TabRoutes.communityTab:
+      case TabRoutes.profileTab:
+        // For all tab routes, return the TabNavigator (it will handle showing the correct tab)
+        return MaterialPageRoute(
+          builder: (_) => TabNavigator(initialRoute: settings.name),
+        );
       
       // Drive routes
       case DriveRoutes.activeDrive:
