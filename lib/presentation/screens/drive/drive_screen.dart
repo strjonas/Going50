@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:going50/core/theme/app_colors.dart';
+import 'package:going50/core/constants/route_constants.dart';
 import 'package:going50/presentation/providers/driving_provider.dart';
 import 'package:going50/presentation/providers/insights_provider.dart';
 import 'package:going50/presentation/screens/drive/components/connection_status_widget.dart';
@@ -218,12 +219,8 @@ class _DriveScreenState extends State<DriveScreen> {
             if (!drivingProvider.isObdConnected)
               TextButton.icon(
                 onPressed: () {
-                  // TODO: Navigate to device connection screen
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Device connection not yet implemented'),
-                    ),
-                  );
+                  // Navigate to device connection screen
+                  Navigator.of(context).pushNamed(ProfileRoutes.deviceConnection);
                 },
                 icon: const Icon(Icons.bluetooth),
                 label: const Text('Connect OBD Device'),

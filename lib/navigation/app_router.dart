@@ -10,6 +10,7 @@ import '../presentation/screens/insights/trip_history_screen.dart';
 import '../presentation/screens/insights/trip_detail_screen.dart';
 import '../presentation/screens/profile/settings_screen.dart';
 import '../presentation/screens/profile/privacy_settings_screen.dart';
+import '../presentation/screens/profile/device_connection_screen.dart';
 import '../presentation/screens/community/challenge_detail_screen.dart';
 import '../presentation/screens/community/friend_profile_screen.dart';
 
@@ -86,9 +87,7 @@ class AppRouter {
         
       case ProfileRoutes.deviceConnection:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Device Connection Screen - To be implemented')),
-          ),
+          builder: (_) => const DeviceConnectionScreen(),
         );
         
       // Onboarding routes
