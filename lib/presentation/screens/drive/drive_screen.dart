@@ -151,10 +151,12 @@ class _DriveScreenState extends State<DriveScreen> {
             // Start trip button
             StartTripButton(
               size: 100,
-              onBeforeStart: () {
-                // Show an explanation dialog about permissions
-                showDialog(
+              onBeforeStart: () async {
+                // Show an explanation dialog about permissions and wait for user to acknowledge
+                // before proceeding with permission requests
+                bool? dialogResult = await showDialog<bool>(
                   context: context,
+                  barrierDismissible: false, // User must take an action
                   builder: (context) => AlertDialog(
                     title: const Text('Required Permissions'),
                     content: const Text(
@@ -164,56 +166,26 @@ class _DriveScreenState extends State<DriveScreen> {
                     ),
                     actions: [
                       TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('OK'),
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text('Continue'),
                       ),
                     ],
                   ),
                 );
+                
+                // If user didn't confirm, stop the flow by throwing an exception
+                // The StartTripButton will catch this and not proceed
+                if (dialogResult != true) {
+                  throw Exception('Permission dialog canceled by user');
+                }
               },
             ),
             
             const SizedBox(height: 16),
-            
-            // Troubleshooting button (DEBUG ONLY)
-            ElevatedButton(
-              onPressed: () async {
-                // Force reset permission first-time flag
-                final permissionService = serviceLocator<PermissionService>();
-                await permissionService.resetFirstTimeRequestFlag();
-                
-                // Request permissions again
-                await permissionService.requestLocationPermissions(background: false);
-                
-                // Show a loading indicator
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Reinitializing services...'),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
-                }
-                
-                // Force reinitialize services
-                await drivingProvider.forceReinitializeServices();
-                
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Services reinitialized. You can now try starting a trip.'),
-                      duration: Duration(seconds: 3),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber,
-              ),
-              child: const Text('TROUBLESHOOT'),
-            ),
-            
-            const SizedBox(height: 24),
             
             // Device connection shortcut (if not connected)
             if (!drivingProvider.isObdConnected)

@@ -404,7 +404,7 @@ class DrivingService extends ChangeNotifier {
   }
   
   /// Starts a new trip recording
-  Future<Trip?> startTrip() async {
+  Future<Trip?> startTrip({bool skipPermissionChecks = false}) async {
     _logger.info('Starting new trip');
     
     if (_drivingStatus == DrivingStatus.recording) {
@@ -413,38 +413,43 @@ class DrivingService extends ChangeNotifier {
     }
     
     try {
-      // First check for required permissions
-      bool hasLocationPermission = await _permissionService.areLocationPermissionsGranted();
-      if (!hasLocationPermission) {
-        _logger.info('Requesting location permissions');
-        await _permissionService.requestLocationPermissions();
-        
-        // Check again if permissions were granted
-        hasLocationPermission = await _permissionService.areLocationPermissionsGranted();
+      // Check for required permissions (only if not skipped)
+      if (!skipPermissionChecks) {
+        // First check for required permissions
+        bool hasLocationPermission = await _permissionService.areLocationPermissionsGranted();
         if (!hasLocationPermission) {
-          _setError('Location permission required to start trip');
-          return null;
-        }
-      }
-      
-      // If using OBD, check for bluetooth permissions 
-      if (_obdConnectionService.isConnected) {
-        bool hasBluetoothPermission = await _permissionService.areBluetoothPermissionsGranted();
-        if (!hasBluetoothPermission) {
-          _logger.info('Requesting Bluetooth permissions');
-          await _permissionService.requestBluetoothPermissions();
+          _logger.info('Requesting location permissions');
+          await _permissionService.requestLocationPermissions();
           
           // Check again if permissions were granted
-          hasBluetoothPermission = await _permissionService.areBluetoothPermissionsGranted();
-          if (!hasBluetoothPermission) {
-            _setError('Bluetooth permission required to use OBD device');
+          hasLocationPermission = await _permissionService.areLocationPermissionsGranted();
+          if (!hasLocationPermission) {
+            _setError('Location permission required to start trip');
             return null;
           }
         }
+        
+        // If using OBD, check for bluetooth permissions 
+        if (_obdConnectionService.isConnected) {
+          bool hasBluetoothPermission = await _permissionService.areBluetoothPermissionsGranted();
+          if (!hasBluetoothPermission) {
+            _logger.info('Requesting Bluetooth permissions');
+            await _permissionService.requestBluetoothPermissions();
+            
+            // Check again if permissions were granted
+            hasBluetoothPermission = await _permissionService.areBluetoothPermissionsGranted();
+            if (!hasBluetoothPermission) {
+              _setError('Bluetooth permission required to use OBD device');
+              return null;
+            }
+          }
+        }
+        
+        // Check for activity/motion sensor permissions
+        await _permissionService.requestActivityRecognitionPermission();
+      } else {
+        _logger.info('Skipping permission checks as requested');
       }
-      
-      // Check for activity/motion sensor permissions
-      await _permissionService.requestActivityRecognitionPermission();
       
       // Start background service if available
       if (_backgroundService != null) {

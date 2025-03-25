@@ -123,7 +123,10 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
         title: const Text('Trip Summary'),
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => Navigator.of(context).pushReplacementNamed(TabRoutes.driveTab),
+          onPressed: () {
+            // Navigate back to the app root (TabNavigator)
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          },
         ),
         actions: [
           IconButton(
@@ -194,8 +197,49 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
             ),
           ],
           
-          // Bottom padding
-          const SizedBox(height: 40),
+          // Add Bottom Action Buttons
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Primary Share Button
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.share),
+                  label: const Text('Share Your Trip'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    // TODO: Implement sharing functionality
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Sharing coming soon!'))
+                    );
+                  },
+                ),
+                
+                const SizedBox(height: 12),
+                
+                // Secondary Close Button
+                OutlinedButton(
+                  child: const Text('Close Summary'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    // Navigate back to the app root (TabNavigator)
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  },
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -224,7 +268,10 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () => Navigator.of(context).pushReplacementNamed(TabRoutes.driveTab),
+            onPressed: () {
+              // Navigate back to the app root (TabNavigator)
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
             child: const Text('Go to Drive'),
           ),
         ],

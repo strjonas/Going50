@@ -65,8 +65,8 @@ class DrivingProvider extends ChangeNotifier {
   // Public methods that delegate to the driving service
   
   /// Start a new trip
-  Future<bool> startTrip() async {
-    final success = await _drivingService.startTrip() != null;
+  Future<bool> startTrip({bool skipPermissionChecks = false}) async {
+    final success = await _drivingService.startTrip(skipPermissionChecks: skipPermissionChecks) != null;
     return success;
   }
   
