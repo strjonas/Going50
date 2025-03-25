@@ -73,9 +73,8 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
         setState(() {
           _challengeData = challengeData;
           
-          // Check if progress > 0 to determine if user is participating
-          _isParticipating = (challengeData['progress'] ?? 0) > 0 || 
-                           (challengeData['isCompleted'] ?? false);
+          // Use explicit isJoined flag if available, fall back to progress check
+          _isParticipating = challengeData['isJoined'] ?? false;
         });
       } else {
         setState(() {
@@ -121,7 +120,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
         );
       } else {
         // Join the challenge
-        // Invalidate cache first to ensure fresh data
+        // Invalidate cache to ensure fresh data after operation
         await _challengeService.invalidateUserChallengesCache(currentUser.id);
         await _challengeService.startChallenge(currentUser.id, widget.challengeId);
         setState(() {
@@ -388,11 +387,20 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     try {
-                      // In a real app, this would use the actual user ID from auth
-                      const String userId = 'currentUser';
+                      // Get the current user ID from UserService
+                      final currentUser = _userService.currentUser;
+                      if (currentUser == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('User not found. Please restart the app.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
                       
                       final success = await _challengeService.claimChallengeReward(
-                        userId, 
+                        currentUser.id, 
                         widget.challengeId,
                       );
                       

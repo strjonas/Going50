@@ -688,19 +688,18 @@ class ChallengeService extends ChangeNotifier {
       
       // Get user challenges
       final userChallenges = await getUserChallenges(userId);
-      final existingChallenge = userChallenges.firstWhere(
-        (uc) => uc.challengeId == challengeId && uc.isCompleted && !uc.rewardClaimed,
-        orElse: () => UserChallenge(
-          id: _uuid.v4(),
-          userId: userId,
-          challengeId: challengeId,
-          startedAt: DateTime.now(),
-          isCompleted: false,
-        ),
-      );
       
-      // Check if challenge is completed and reward not claimed
-      if (!existingChallenge.isCompleted || existingChallenge.rewardClaimed) {
+      // Look for a completed challenge that hasn't had its reward claimed
+      UserChallenge? existingChallenge;
+      for (final uc in userChallenges) {
+        if (uc.challengeId == challengeId && uc.isCompleted && !uc.rewardClaimed) {
+          existingChallenge = uc;
+          break;
+        }
+      }
+      
+      // Check if challenge is eligible for reward claim
+      if (existingChallenge == null) {
         _logger.warning('Challenge $challengeId not eligible for reward claim');
         return false;
       }
@@ -997,9 +996,12 @@ class ChallengeService extends ChangeNotifier {
       
       // Look for an existing challenge
       UserChallenge? userChallenge;
+      bool isJoined = false;
+      
       for (final uc in userChallenges) {
         if (uc.challengeId == challengeId) {
           userChallenge = uc;
+          isJoined = true;  // Found in user challenges = joined
           break;
         }
       }
@@ -1023,6 +1025,7 @@ class ChallengeService extends ChangeNotifier {
         'rewardClaimed': userChallenge.rewardClaimed,
         'startedAt': userChallenge.startedAt.toIso8601String(),
         'completedAt': userChallenge.completedAt?.toIso8601String(),
+        'isJoined': isJoined,  // Add explicit joined flag
       };
     } catch (e) {
       _logger.severe('Error getting detailed challenge: $e');

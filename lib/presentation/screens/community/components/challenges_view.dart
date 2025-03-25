@@ -80,23 +80,22 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
   
   /// Load challenges from service
   Future<void> _loadChallenges() async {
-    if (!mounted) return;
-    
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    _logger.info('Loading challenges for user: ${_userService.currentUser?.id}');
     
     try {
-      final currentUser = _userService.currentUser;
-      _logger.info('Loading challenges for user: ${currentUser?.id}');
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
       
+      var currentUser = _userService.currentUser;
+      
+      // Initialize UserService if needed
       if (currentUser == null) {
-        // Try to initialize user service if user is not available
         _logger.info('User not available, initializing UserService');
         await _userService.initialize();
+        currentUser = _userService.currentUser;
         
-        // Check again after initialization
         final user = _userService.currentUser;
         if (user == null) {
           _logger.warning('Failed to get user after UserService initialization');
@@ -129,7 +128,7 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
           // Store all challenges for reference
           _allChallenges = allChallenges;
           
-          // Set up active challenges
+          // Set up active challenges - ANY non-completed user challenge is considered active
           _activeChallenges = userChallenges
               .where((uc) => !uc.isCompleted)
               .toList();
@@ -137,7 +136,7 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
           
           // Log active challenge IDs for debugging
           for (var challenge in _activeChallenges) {
-            _logger.info('Active challenge: ${challenge.challengeId}');
+            _logger.info('Active challenge ID: ${challenge.challengeId}');
           }
           
           // Set up completed challenges
@@ -146,15 +145,17 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
               .toList();
           _logger.info('Completed challenges: ${_completedChallenges.length}');
           
-          // Set up available challenges (challenges not started by user)
-          final userChallengeIds = userChallenges
-              .where((uc) => !uc.isCompleted) // Only consider active challenges
+          // Get ALL user challenge IDs (both active and completed)
+          final allUserChallengeIds = userChallenges
               .map((uc) => uc.challengeId)
               .toSet();
-          _logger.info('Active challenge IDs: ${userChallengeIds.length}');
+              
+          // Log active challenge IDs for debugging
+          _logger.info('All user challenge IDs: ${allUserChallengeIds.length}');
           
+          // Available challenges should be challenges NOT in any user challenges list
           _availableChallenges = allChallenges
-              .where((c) => !userChallengeIds.contains(c.id))
+              .where((c) => !allUserChallengeIds.contains(c.id))
               .toList();
           _logger.info('Available challenges: ${_availableChallenges.length}');
           
