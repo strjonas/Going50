@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:going50/core_models/user_profile.dart';
 import 'package:going50/services/user/user_service.dart';
 import 'package:going50/services/user/preferences_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Provider for user profile state
 ///
@@ -193,5 +194,52 @@ class UserProvider extends ChangeNotifier {
   void _setError(String message) {
     _errorMessage = message;
     notifyListeners();
+  }
+  
+  /// Reset user state - used when data is deleted
+  Future<void> resetUser() async {
+    _setLoading(true);
+    try {
+      // Clear local state first
+      _userProfile = null;
+      _isAnonymous = true;
+      _preferences = {};
+      _errorMessage = null;
+      
+      // Reset preferences service
+      await _preferencesService.resetAllPreferences();
+      
+      // Clear shared preferences to ensure complete reset
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Clear all user-related preferences 
+      await prefs.remove('user_id');
+      await prefs.remove('is_anonymous');
+      await prefs.remove('preferences_json');
+      await prefs.remove('last_login');
+      await prefs.remove('auth_token');
+      
+      // Add a small delay to ensure all state is cleared
+      await Future.delayed(Duration(milliseconds: 200));
+      
+      // Create a new anonymous user
+      try {
+        await _userService.createAnonymousUser();
+        
+        // Update local state with the new user
+        _userProfile = _userService.currentUser;
+        _isAnonymous = _userService.isAnonymous;
+      } catch (e) {
+        // Even if this fails, we want to continue with reset
+        print('Error creating anonymous user: $e');
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to reset user state: $e');
+    } finally {
+      _setLoading(false);
+      notifyListeners(); // Notify again to ensure UI updates
+    }
   }
 } 

@@ -83,38 +83,92 @@ class UserService {
   
   /// Create an anonymous user
   Future<UserProfile> createAnonymousUser() async {
-    final userId = const Uuid().v4();
-    final now = DateTime.now();
-    
-    final user = UserProfile(
-      id: userId,
-      name: 'Anonymous User',
-      createdAt: now,
-      lastUpdatedAt: now,
-      isPublic: false,
-      allowDataUpload: false,
-    );
-    
-    // Save to database
-    await _dataStorageManager.saveUserProfile(
-      userId, 
-      user.name, 
-      user.isPublic, 
-      user.allowDataUpload
-    );
-    
-    // Update shared preferences
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_userIdKey, userId);
-    await prefs.setBool(_isAnonymousKey, true);
-    
-    // Update state
-    _currentUser = user;
-    _isAnonymous = true;
-    _userProfileStreamController.add(user);
-    
-    _log.info('Created anonymous user: $userId');
-    return user;
+    try {
+      final userId = const Uuid().v4();
+      final now = DateTime.now();
+      
+      // Create user profile object
+      final user = UserProfile(
+        id: userId,
+        name: 'Anonymous User',
+        createdAt: now,
+        lastUpdatedAt: now,
+        isPublic: false,
+        allowDataUpload: false,
+      );
+      
+      _log.info('Creating anonymous user with ID: $userId');
+      
+      // Clear any existing user data in shared preferences first
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_userIdKey);
+      await prefs.remove(_isAnonymousKey);
+      
+      // Try to save to database with retry logic
+      int attempts = 0;
+      const maxAttempts = 3;
+      bool saveSuccess = false;
+      
+      while (!saveSuccess && attempts < maxAttempts) {
+        attempts++;
+        try {
+          // Save to database
+          await _dataStorageManager.saveUserProfile(
+            userId, 
+            user.name, 
+            user.isPublic, 
+            user.allowDataUpload
+          );
+          
+          // Verify user was saved
+          final savedUser = await _dataStorageManager.getUserProfileById(userId);
+          if (savedUser != null) {
+            saveSuccess = true;
+            _log.info('Successfully saved anonymous user on attempt $attempts');
+          } else {
+            _log.warning('Failed to verify user was saved on attempt $attempts');
+            await Future.delayed(Duration(milliseconds: 100 * attempts));
+          }
+        } catch (e) {
+          _log.warning('Error saving anonymous user on attempt $attempts: $e');
+          await Future.delayed(Duration(milliseconds: 100 * attempts));
+        }
+      }
+      
+      if (!saveSuccess) {
+        _log.severe('Failed to save anonymous user after $maxAttempts attempts');
+        // We'll still continue to set shared preferences and update state
+        // so the app can at least function with an in-memory user
+      }
+      
+      // Update shared preferences
+      await prefs.setString(_userIdKey, userId);
+      await prefs.setBool(_isAnonymousKey, true);
+      
+      // Update state
+      _currentUser = user;
+      _isAnonymous = true;
+      _userProfileStreamController.add(user);
+      
+      _log.info('Created anonymous user: $userId');
+      return user;
+    } catch (e) {
+      _log.severe('Error creating anonymous user: $e');
+      // Create a fallback in-memory-only user as a last resort
+      final userId = const Uuid().v4();
+      final user = UserProfile(
+        id: userId,
+        name: 'Emergency User',
+        createdAt: DateTime.now(),
+        lastUpdatedAt: DateTime.now(),
+        isPublic: false,
+        allowDataUpload: false,
+      );
+      _currentUser = user;
+      _isAnonymous = true;
+      _userProfileStreamController.add(user);
+      return user;
+    }
   }
   
   /// Register a new user account

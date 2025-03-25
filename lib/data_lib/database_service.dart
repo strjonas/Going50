@@ -912,15 +912,15 @@ class AppDatabase extends _$AppDatabase {
   Future<bool> isUserBlocked(String userId, String blockedUserId) async {
     final query = select(userBlocksTable)
       ..where((t) => t.userId.equals(userId) & t.blockedUserId.equals(blockedUserId));
-      
-    final result = await query.get();
-    return result.isNotEmpty;
+    
+    final results = await query.get();
+    return results.isNotEmpty;
   }
   
   Future<List<String>> getBlockedUsers(String userId) async {
     final query = select(userBlocksTable)
       ..where((t) => t.userId.equals(userId));
-      
+    
     final results = await query.get();
     return results.map((row) => row.blockedUserId).toList();
   }
@@ -1065,6 +1065,153 @@ class AppDatabase extends _$AppDatabase {
         allowDataUpload: data.allowDataUpload,
       );
     }).toList();
+  }
+  
+  // Data deletion methods
+  
+  /// Delete all trips for a user
+  Future<int> deleteUserTrips(String userId) async {
+    final query = delete(tripsTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
+  }
+  
+  /// Delete all driving events for a user
+  Future<int> deleteUserDrivingEvents(String userId) async {
+    // First get all trips for this user
+    final userTrips = await (select(tripsTable)..where((t) => t.userId.equals(userId))).get();
+    
+    // If no trips, nothing to delete
+    if (userTrips.isEmpty) {
+      return 0;
+    }
+    
+    // Get all trip IDs
+    final tripIds = userTrips.map((t) => t.id).toList();
+    
+    // Delete all driving events associated with these trips
+    int deletedCount = 0;
+    for (final tripId in tripIds) {
+      final query = delete(drivingEventsTable)
+        ..where((t) => t.tripId.equals(tripId));
+      
+      deletedCount += await query.go();
+    }
+    
+    return deletedCount;
+  }
+  
+  /// Delete all performance metrics for a user
+  Future<int> deleteUserPerformanceMetrics(String userId) async {
+    final query = delete(performanceMetricsTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
+  }
+  
+  /// Delete all badges for a user
+  Future<int> deleteUserBadges(String userId) async {
+    final query = delete(badgesTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
+  }
+  
+  /// Delete all privacy settings for a user
+  Future<int> deleteUserDataPrivacySettings(String userId) async {
+    final query = delete(dataPrivacySettingsTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
+  }
+  
+  /// Delete all social connections for a user
+  Future<int> deleteUserSocialConnections(String userId) async {
+    final query = delete(socialConnectionsTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
+  }
+  
+  /// Delete all social interactions for a user
+  Future<int> deleteUserSocialInteractions(String userId) async {
+    final query = delete(socialInteractionsTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
+  }
+  
+  /// Delete all friend requests for a user
+  Future<int> deleteUserFriendRequests(String userId) async {
+    // Delete requests sent by user
+    final query1 = delete(friendRequestsTable)
+      ..where((t) => t.fromUserId.equals(userId));
+    
+    // Delete requests received by user
+    final query2 = delete(friendRequestsTable)
+      ..where((t) => t.toUserId.equals(userId));
+    
+    final count1 = await query1.go();
+    final count2 = await query2.go();
+    
+    return count1 + count2;
+  }
+  
+  /// Delete all user blocks by a user
+  Future<int> deleteUserBlocks(String userId) async {
+    final query = delete(userBlocksTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
+  }
+  
+  /// Delete all shared content for a user
+  Future<int> deleteUserSharedContent(String userId) async {
+    final query = delete(sharedContentTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
+  }
+  
+  /// Delete all user preferences
+  Future<int> deleteUserPreferences(String userId) async {
+    final query = delete(userPreferencesTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
+  }
+  
+  /// Delete all user challenges
+  Future<int> deleteUserChallenges(String userId) async {
+    final query = delete(userChallengesTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
+  }
+  
+  /// Delete all streaks for a user
+  Future<int> deleteUserStreaks(String userId) async {
+    final query = delete(streaksTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
+  }
+  
+  /// Delete all leaderboard entries for a user
+  Future<int> deleteUserLeaderboardEntries(String userId) async {
+    final query = delete(leaderboardEntriesTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
+  }
+  
+  /// Delete all external integrations for a user
+  Future<int> deleteUserExternalIntegrations(String userId) async {
+    final query = delete(externalIntegrationsTable)
+      ..where((t) => t.userId.equals(userId));
+    
+    return await query.go();
   }
   
   /// Close the database connection

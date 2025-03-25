@@ -74,9 +74,27 @@ The app uses a `DataStorageManager` class that serves as the main data persisten
    - Implemented proper progress tracking in the UI
    - Fixed methods to use real data from the database
 
+✅ **Fix ChallengeService Initialization**
+   - Fixed critical error in `ChallengeService` where challenge IDs were too short for database constraints
+   - Implemented deterministic ID generation that creates consistent 36-character IDs across app restarts
+   - Preserved the original descriptive IDs by combining them with a padding pattern
+   - Ensured service can properly initialize and store/retrieve challenges without creating duplicates
+
+✅ **Fix Challenge Joining Functionality**
+   - Fixed issue where joined challenges didn't move from available to active list
+   - Added cache invalidation method in `ChallengeService` to ensure fresh data is loaded
+   - Fixed bug in challenge definition lookup by using all challenges instead of just available ones
+   - Added proper loading states during join operation for better user experience
+   - Automatically switched to Active tab after joining to show the user their joined challenge
+   - Added cache invalidation to challenge detail screen for consistency
+   - Fixed critical bug in `challenge_detail_screen.dart` where a hardcoded 'currentUser' ID was used instead of the actual user ID from UserService
+   - Ensured consistent user ID usage between the challenge list and detail screens
+
 1. **Implement Local Profile Stats**
    - Update profile statistics to use real driving data from `PerformanceMetricsService`
    - Replace mock longest trip and streak data with actual values
+
+
 
 ### Phase 2: Firebase Integration (2-3 weeks)
 
@@ -126,6 +144,48 @@ Based on my analysis, **Firebase would be the best choice** for quickly implemen
    - Create activity tracking for achievement unlocks and challenge completions
    - Implement feed UI to display friend activities
    - Add interaction features (likes, comments)
+   #### Transition Plan: Local to Server-Based Challenge System
+
+Our current implementation of the challenge system uses a workaround with deterministic client-side IDs to satisfy database constraints. This is sufficient for local functionality, but needs to transition to a server-based implementation during Firebase integration. Below are the specific implementation steps for this transition:
+
+##### Current Implementation Notes
+
+- Challenge definitions are hard-coded in `ChallengeService._defineSystemChallenges()`
+- Using deterministic 36-character IDs to ensure consistency across app restarts
+- All challenge logic executes locally on the device
+- Progress is stored in local SQLite database through `DataStorageManager`
+
+##### Server Implementation Transition Steps
+
+1. **Design Firestore Schema** (During Phase 2.3)
+   - Create `challenges` collection with fields matching our current Challenge model
+   - Add server-specific fields: `activeFrom`, `activeTo`, `version`, `targetAudience`
+   - Create `user_challenges` subcollection under user documents for progress tracking
+   - Design security rules to control read/write access appropriately
+
+2. **Update ChallengeService** (Early Phase 3)
+   - Modify to fetch challenges from Firebase when online
+   - Implement local caching with `shared_preferences` or Firebase offline persistence
+   - Add versioning to handle challenge definition updates
+   - Maintain backward compatibility with existing local challenges
+
+3. **Challenge Synchronization Implementation** (Phase 3.1)
+   - Add bidirectional sync for challenge progress
+   - Implement conflict resolution for offline progress updates
+   - Add background sync capabilities using WorkManager/BackgroundFetch
+
+4. **Migration Process** (Phase 3.2)
+   - Create Cloud Function to migrate existing user challenge progress
+   - Implement version detection to trigger migration for upgrading users
+   - Add analytics to track migration success rates
+
+5. **Admin Interface** (Phase 3.3)
+   - Create Firebase Admin SDK integration for challenge management
+   - Implement CRUD operations for challenges
+   - Add scheduling interface for timed challenges
+   - Develop analytics dashboard for challenge engagement metrics
+
+This transition will enable global challenge participation, timed events, and centralized analytics that aren't possible with the current local-only implementation.
 
 ### Phase 4: Integration & Testing (1-2 weeks)
 

@@ -11,6 +11,7 @@ import '../presentation/screens/insights/trip_detail_screen.dart';
 import '../presentation/screens/profile/settings_screen.dart';
 import '../presentation/screens/profile/privacy_settings_screen.dart';
 import '../presentation/screens/profile/device_connection_screen.dart';
+import '../presentation/screens/profile/data_management_screen.dart';
 import '../presentation/screens/community/challenge_detail_screen.dart';
 import '../presentation/screens/community/friend_profile_screen.dart';
 import '../navigation/tab_navigator.dart';
@@ -98,6 +99,15 @@ class AppRouter {
       case ProfileRoutes.deviceConnection:
         return MaterialPageRoute(
           builder: (_) => const DeviceConnectionScreen(),
+        );
+        
+      case ProfileRoutes.dataManagement:
+        // Extract the arguments if present
+        final Map<String, dynamic> args = settings.arguments as Map<String, dynamic>? ?? {};
+        final bool scrollToReset = args['scrollToReset'] as bool? ?? false;
+        
+        return MaterialPageRoute(
+          builder: (_) => DataManagementScreen(scrollToReset: scrollToReset),
         );
         
       // Onboarding routes

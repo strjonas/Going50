@@ -156,11 +156,10 @@ class SettingsScreen extends StatelessWidget {
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           showDivider: false,
           onTap: () {
-            // TODO: Navigate to data management screen
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Data management not yet implemented'),
-              ),
+            // Navigate to data management screen without scrolling to reset
+            Navigator.of(context).pushNamed(
+              ProfileRoutes.dataManagement,
+              arguments: {'scrollToReset': false},
             );
           },
         ),

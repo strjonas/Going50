@@ -916,7 +916,7 @@ class DataStorageManager {
     try {
       return await _database.getBlockedUsers(userId);
     } catch (e) {
-      _logger.warning('Error retrieving blocked users: $e');
+      _logger.warning('Error getting blocked users: $e');
       return [];
     }
   }
@@ -1188,6 +1188,216 @@ class DataStorageManager {
     } catch (e) {
       _logger.severe('Error getting user badges: $e');
       return [];
+    }
+  }
+  
+  /// Delete all data for a user
+  Future<void> deleteUserData(String userId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      _logger.info('Deleting all data for user: $userId');
+      
+      // Delete all user-related data from tables - with try/catch for each operation
+      // to handle cases where tables might not exist yet
+      
+      // Core data tables - these should always exist
+      try {
+        await _database.deleteUserTrips(userId);
+        _logger.info('Deleted user trips');
+      } catch (e) {
+        _logger.warning('Error deleting user trips: $e');
+      }
+      
+      try {
+        await _database.deleteUserDrivingEvents(userId);
+        _logger.info('Deleted user driving events');
+      } catch (e) {
+        _logger.warning('Error deleting user driving events: $e');
+      }
+      
+      try {
+        await _database.deleteUserPerformanceMetrics(userId);
+        _logger.info('Deleted user performance metrics');
+      } catch (e) {
+        _logger.warning('Error deleting user performance metrics: $e');
+      }
+      
+      try {
+        await _database.deleteUserBadges(userId);
+        _logger.info('Deleted user badges');
+      } catch (e) {
+        _logger.warning('Error deleting user badges: $e');
+      }
+      
+      try {
+        await _database.deleteUserDataPrivacySettings(userId);
+        _logger.info('Deleted user privacy settings');
+      } catch (e) {
+        _logger.warning('Error deleting user privacy settings: $e');
+      }
+      
+      // Social features - these might not exist yet
+      try {
+        await _database.deleteUserSocialConnections(userId);
+        _logger.info('Deleted user social connections');
+      } catch (e) {
+        _logger.warning('Error deleting user social connections: $e');
+      }
+      
+      try {
+        await _database.deleteUserSocialInteractions(userId);
+        _logger.info('Deleted user social interactions');
+      } catch (e) {
+        _logger.warning('Error deleting user social interactions: $e');
+      }
+      
+      try {
+        await _database.deleteUserFriendRequests(userId);
+        _logger.info('Deleted user friend requests');
+      } catch (e) {
+        _logger.warning('Error deleting user friend requests: $e');
+      }
+      
+      try {
+        await _database.deleteUserBlocks(userId);
+        _logger.info('Deleted user blocks');
+      } catch (e) {
+        _logger.warning('Error deleting user blocks: $e');
+      }
+      
+      try {
+        await _database.deleteUserSharedContent(userId);
+        _logger.info('Deleted user shared content');
+      } catch (e) {
+        _logger.warning('Error deleting user shared content: $e');
+      }
+      
+      // Gamification - these might not exist yet
+      try {
+        await _database.deleteUserPreferences(userId);
+        _logger.info('Deleted user preferences');
+      } catch (e) {
+        _logger.warning('Error deleting user preferences: $e');
+      }
+      
+      try {
+        await _database.deleteUserChallenges(userId);
+        _logger.info('Deleted user challenges');
+      } catch (e) {
+        _logger.warning('Error deleting user challenges: $e');
+      }
+      
+      try {
+        await _database.deleteUserStreaks(userId);
+        _logger.info('Deleted user streaks');
+      } catch (e) {
+        _logger.warning('Error deleting user streaks: $e');
+      }
+      
+      try {
+        await _database.deleteUserLeaderboardEntries(userId);
+        _logger.info('Deleted user leaderboard entries');
+      } catch (e) {
+        _logger.warning('Error deleting user leaderboard entries: $e');
+      }
+      
+      try {
+        await _database.deleteUserExternalIntegrations(userId);
+        _logger.info('Deleted user external integrations');
+      } catch (e) {
+        _logger.warning('Error deleting user external integrations: $e');
+      }
+      
+      // Reset shared preferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('user_id');
+      await prefs.remove('is_anonymous');
+      await prefs.remove('allow_cloud_sync');
+      await prefs.remove('is_public_profile');
+      await prefs.remove('preferences_json');
+      
+      // Optional: Consider clearing cached files
+      try {
+        final appDir = await getApplicationDocumentsDirectory();
+        final userDir = Directory('${appDir.path}/$userId');
+        if (await userDir.exists()) {
+          await userDir.delete(recursive: true);
+          _logger.info('Deleted user directory: ${userDir.path}');
+        }
+      } catch (e) {
+        _logger.warning('Could not delete user directory: $e');
+      }
+      
+      // Reset internal state
+      _currentUserId = null;
+      _allowCloudSync = false;
+      _isPublicProfile = false;
+      
+      _logger.info('Successfully deleted all data for user: $userId');
+    } catch (e) {
+      _logger.severe('Error deleting user data: $e');
+      rethrow;
+    }
+  }
+  
+  /// Delete basic user data (simplified version of deleteUserData)
+  /// This is a more targeted method that only deletes core data tables
+  /// with timeout protection to prevent hanging
+  Future<void> deleteBasicUserData(String userId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      _logger.info('Deleting basic user data for: $userId');
+      
+      // Use individual futures with timeouts for critical tables
+      // to prevent any one operation from hanging the whole process
+      
+      // Core tables
+      await _deleteTableWithTimeout(_database.deleteUserTrips, userId, 'trips');
+      await _deleteTableWithTimeout(_database.deleteUserDrivingEvents, userId, 'driving events');
+      await _deleteTableWithTimeout(_database.deleteUserPerformanceMetrics, userId, 'performance metrics');
+      await _deleteTableWithTimeout(_database.deleteUserBadges, userId, 'badges');
+      await _deleteTableWithTimeout(_database.deleteUserDataPrivacySettings, userId, 'privacy settings');
+      
+      // Reset shared preferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('user_id');
+      await prefs.remove('is_anonymous');
+      await prefs.remove('allow_cloud_sync');
+      await prefs.remove('is_public_profile');
+      await prefs.remove('preferences_json');
+      
+      // Reset internal state
+      _currentUserId = null;
+      _allowCloudSync = false;
+      _isPublicProfile = false;
+      
+      _logger.info('Successfully deleted basic user data for: $userId');
+    } catch (e) {
+      _logger.severe('Error deleting basic user data: $e');
+      rethrow;
+    }
+  }
+  
+  /// Helper to delete table data with timeout protection
+  Future<void> _deleteTableWithTimeout(
+    Future<int> Function(String) deleteFunction, 
+    String userId, 
+    String tableName
+  ) async {
+    try {
+      // Set a timeout for each delete operation to prevent hanging
+      final result = await deleteFunction(userId)
+          .timeout(const Duration(seconds: 3), onTimeout: () {
+        _logger.warning('Timeout deleting $tableName for user $userId');
+        return 0; // Return 0 rows deleted on timeout
+      });
+      
+      _logger.info('Deleted $result $tableName records for user $userId');
+    } catch (e) {
+      // Log but don't rethrow to allow other tables to be processed
+      _logger.warning('Error deleting $tableName: $e');
     }
   }
 } 

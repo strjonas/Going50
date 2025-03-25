@@ -86,24 +86,7 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                       
                       const SizedBox(height: 24),
                       
-                      // Debug button
-                      if (kDebugMode)
-                        ElevatedButton(
-                          onPressed: () async {
-                            final privacyService = Provider.of<PrivacyService>(context, listen: false);
-                            await privacyService.initialize();
-                            
-                            // Force refresh
-                            setState(() => _isLoading = false);
-                            
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Privacy settings reinitialized: ${privacyService.privacySettings.length} settings')),
-                            );
-                          },
-                          child: const Text('DEBUG: Reinitialize Privacy Settings'),
-                        ),
-                        
-                      const SizedBox(height: 12),
+                     
                       
                       // Data collection toggles
                       const Text(

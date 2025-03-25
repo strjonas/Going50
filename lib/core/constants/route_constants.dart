@@ -73,6 +73,9 @@ class ProfileRoutes {
   /// Route for the device connection screen
   static const String deviceConnection = '/profile/device-connection';
   
+  /// Route for the data management screen
+  static const String dataManagement = '/profile/data-management';
+  
   // Prevent instantiation
   ProfileRoutes._();
 }

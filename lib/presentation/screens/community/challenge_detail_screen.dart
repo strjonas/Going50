@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:going50/core/theme/app_colors.dart';
 import 'package:going50/services/gamification/challenge_service.dart';
 import 'package:going50/services/service_locator.dart';
+import 'package:going50/services/user/user_service.dart';
 import 'package:going50/presentation/providers/social_provider.dart';
 import 'package:going50/presentation/screens/community/components/challenge_progress_section.dart';
 import 'package:going50/presentation/screens/community/components/challenge_leaderboard.dart';
@@ -37,6 +38,9 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
   Map<String, dynamic>? _challengeData;
   bool _isParticipating = false;
   
+  // Add the UserService
+  final UserService _userService = serviceLocator<UserService>();
+
   @override
   void initState() {
     super.initState();
@@ -51,10 +55,17 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
     });
     
     try {
-      // In a real app, this would use the actual user ID from auth
-      const String userId = 'currentUser';
+      // Get the current user ID from UserService
+      final currentUser = _userService.currentUser;
+      if (currentUser == null) {
+        setState(() {
+          _errorMessage = 'User not found. Please restart the app.';
+        });
+        return;
+      }
+      
       final challengeData = await _challengeService.getDetailedChallenge(
-        userId, 
+        currentUser.id, 
         widget.challengeId,
       );
       
@@ -91,8 +102,14 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
     });
     
     try {
-      // In a real app, this would use the actual user ID from auth
-      const String userId = 'currentUser';
+      // Get the current user ID from UserService
+      final currentUser = _userService.currentUser;
+      if (currentUser == null) {
+        setState(() {
+          _errorMessage = 'User not found. Please restart the app.';
+        });
+        return;
+      }
       
       if (_isParticipating) {
         // Currently there's no API for leaving a challenge
@@ -104,7 +121,9 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
         );
       } else {
         // Join the challenge
-        await _challengeService.startChallenge(userId, widget.challengeId);
+        // Invalidate cache first to ensure fresh data
+        await _challengeService.invalidateUserChallengesCache(currentUser.id);
+        await _challengeService.startChallenge(currentUser.id, widget.challengeId);
         setState(() {
           _isParticipating = true;
         });

@@ -7,6 +7,7 @@ import 'package:going50/services/gamification/challenge_service.dart';
 import 'package:going50/services/service_locator.dart';
 import 'package:going50/services/user/user_service.dart';
 import 'package:going50/core_models/gamification_models.dart';
+import 'package:logging/logging.dart';
 
 /// ChallengesView displays active and available challenges.
 ///
@@ -41,11 +42,14 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
   // Challenge data
   List<UserChallenge> _activeChallenges = [];
   List<Challenge> _availableChallenges = [];
+  List<Challenge> _allChallenges = [];
   List<UserChallenge> _completedChallenges = [];
   
   // Loading state
   bool _isLoading = true;
   String? _errorMessage;
+  
+  final _logger = Logger('ChallengesView');
   
   @override
   void initState() {
@@ -85,14 +89,17 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
     
     try {
       final currentUser = _userService.currentUser;
+      _logger.info('Loading challenges for user: ${currentUser?.id}');
       
       if (currentUser == null) {
         // Try to initialize user service if user is not available
+        _logger.info('User not available, initializing UserService');
         await _userService.initialize();
         
         // Check again after initialization
         final user = _userService.currentUser;
         if (user == null) {
+          _logger.warning('Failed to get user after UserService initialization');
           if (mounted) {
             setState(() {
               _errorMessage = 'User not found. Please restart the app.';
@@ -104,39 +111,58 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
       }
       
       // Get all challenges
+      _logger.info('Getting all challenges from ChallengeService');
       final allChallenges = await _challengeService.getAllChallenges();
+      _logger.info('Retrieved ${allChallenges.length} total challenges');
       
-      // Get user challenges
+      // Get user challenges - explicitly invalidate the cache first
+      // This ensures we get fresh data after joining a challenge
+      _logger.info('Invalidating user challenges cache for user: ${currentUser?.id}');
+      await _challengeService.invalidateUserChallengesCache(currentUser?.id ?? '');
       final userChallenges = await _challengeService.getUserChallenges(
         currentUser?.id ?? '',
       );
+      _logger.info('Retrieved ${userChallenges.length} user challenges');
       
       if (mounted) {
         setState(() {
+          // Store all challenges for reference
+          _allChallenges = allChallenges;
+          
           // Set up active challenges
           _activeChallenges = userChallenges
               .where((uc) => !uc.isCompleted)
               .toList();
+          _logger.info('Active challenges: ${_activeChallenges.length}');
+          
+          // Log active challenge IDs for debugging
+          for (var challenge in _activeChallenges) {
+            _logger.info('Active challenge: ${challenge.challengeId}');
+          }
           
           // Set up completed challenges
           _completedChallenges = userChallenges
               .where((uc) => uc.isCompleted)
               .toList();
+          _logger.info('Completed challenges: ${_completedChallenges.length}');
           
           // Set up available challenges (challenges not started by user)
           final userChallengeIds = userChallenges
               .where((uc) => !uc.isCompleted) // Only consider active challenges
               .map((uc) => uc.challengeId)
               .toSet();
+          _logger.info('Active challenge IDs: ${userChallengeIds.length}');
           
           _availableChallenges = allChallenges
               .where((c) => !userChallengeIds.contains(c.id))
               .toList();
+          _logger.info('Available challenges: ${_availableChallenges.length}');
           
           _isLoading = false;
         });
       }
     } catch (e) {
+      _logger.severe('Error loading challenges: $e');
       if (mounted) {
         setState(() {
           _errorMessage = 'Failed to load challenges: $e';
@@ -260,8 +286,8 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
       itemBuilder: (context, index) {
         final userChallenge = _activeChallenges[index];
         
-        // Find the challenge definition
-        final challengeDef = _availableChallenges.firstWhere(
+        // Find the challenge definition from ALL challenges, not just available ones
+        final challengeDef = _allChallenges.firstWhere(
           (c) => c.id == userChallenge.challengeId,
           orElse: () => Challenge(
             id: userChallenge.challengeId,
@@ -387,8 +413,8 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
       itemBuilder: (context, index) {
         final userChallenge = _completedChallenges[index];
         
-        // Find the challenge definition
-        final challengeDef = _availableChallenges.firstWhere(
+        // Find the challenge definition - use _allChallenges instead of _availableChallenges
+        final challengeDef = _allChallenges.firstWhere(
           (c) => c.id == userChallenge.challengeId,
           orElse: () => Challenge(
             id: userChallenge.challengeId,
@@ -728,13 +754,82 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                     ],
                   ),
                   ElevatedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Joined ${challenge['title']} challenge'),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
+                    onPressed: () async {
+                      final currentUser = _userService.currentUser;
+                      if (currentUser != null) {
+                        // Show loading indicator
+                        setState(() {
+                          _isLoading = true;
+                        });
+                        
+                        try {
+                          // Clear the cache to ensure fresh data
+                          await _challengeService.invalidateUserChallengesCache(currentUser.id);
+                          
+                          // Start the challenge
+                          final result = await _challengeService.startChallenge(
+                            currentUser.id,
+                            challenge['id'],
+                          );
+                          
+                          if (result != null) {
+                            _logger.info('Successfully joined challenge: ${challenge['title']}');
+                            
+                            // Reload challenges to update UI
+                            await _loadChallenges();
+                            
+                            // Show success message
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Joined ${challenge['title']} challenge'),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                              
+                              // Switch to active challenges tab to show the user their joined challenge
+                              _tabController.animateTo(0);
+                              
+                              // Log the lengths of each challenge list for debugging
+                              _logger.info('After join - Active: ${_activeChallenges.length}, '
+                                  'Available: ${_availableChallenges.length}, '
+                                  'Completed: ${_completedChallenges.length}');
+                            }
+                          } else {
+                            _logger.warning('Failed to join challenge: ${challenge['title']}');
+                            
+                            // Hide loading indicator
+                            setState(() {
+                              _isLoading = false;
+                            });
+                            
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Failed to join challenge. Please try again.'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          _logger.severe('Error joining challenge: $e');
+                          
+                          // Hide loading indicator
+                          setState(() {
+                            _isLoading = false;
+                          });
+                          
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error joining challenge: $e'),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        }
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,

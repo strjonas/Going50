@@ -117,7 +117,22 @@ class MetricType {
   static const String steadySpeed = 'steady_speed';
 }
 
-/// Service that manages challenges and their progress tracking
+/// Service that manages challenges and their progress tracking.
+///
+/// IMPLEMENTATION NOTE:
+/// This service currently uses a local-only implementation with client-side
+/// challenge definitions. The current implementation uses deterministic IDs that
+/// are consistent across app restarts to meet the 36-character database constraint.
+///
+/// MIGRATION PLAN:
+/// This service will be migrated to use Firebase/server-based challenge definitions
+/// during Phase 2/3 of implementation. The migration will involve:
+/// 1. Fetching challenge definitions from Firestore
+/// 2. Syncing user progress bidirectionally
+/// 3. Supporting offline functionality with local caching
+/// 4. Managing challenge lifecycle (seasonal, timed challenges)
+///
+/// See the MockReplacementRoadmap.md "Transition Plan" section for detailed steps.
 class ChallengeService extends ChangeNotifier {
   final Logger _logger = Logger('ChallengeService');
   final DataStorageManager _dataStorageManager;
@@ -154,11 +169,36 @@ class ChallengeService extends ChangeNotifier {
   }
   
   /// Define system-provided challenges
+  ///
+  /// IMPLEMENTATION NOTE:
+  /// This method creates hard-coded challenge definitions with 
+  /// deterministic IDs that meet the 36-character database constraint.
+  /// The createConsistentId() function generates IDs that are consistent
+  /// across app restarts while preserving the descriptive ID structure.
+  ///
+  /// In the server-based implementation, this method will be replaced with
+  /// code that fetches challenge definitions from Firebase/backend API.
+  /// See MockReplacementRoadmap.md "Transition Plan" for migration details.
   void _defineSystemChallenges() {
+    // Helper function to create consistent IDs that meet the 36-char requirement
+    String createConsistentId(String shortId) {
+      // Pad the ID to ensure it's always 36 characters
+      // Format: original_id + underscore + padding_characters_to_reach_36
+      const String padding = "0123456789abcdef0123456789abcdef0123456789";
+      final int padLength = 36 - shortId.length - 1; // -1 for the underscore
+      
+      if (padLength <= 0) {
+        // Already 36+ characters (shouldn't happen with our current IDs)
+        return shortId;
+      }
+      
+      return "$shortId${"_"}${padding.substring(0, padLength)}";
+    }
+    
     _systemChallenges = [
       // Daily challenges
       Challenge(
-        id: 'daily_eco_score_75',
+        id: createConsistentId('daily_eco_score_75'),
         title: 'Green Commuter',
         description: 'Achieve at least 75 eco-score on a trip today',
         type: ChallengeType.daily,
@@ -169,7 +209,7 @@ class ChallengeService extends ChangeNotifier {
         rewardValue: 50,
       ),
       Challenge(
-        id: 'daily_calm_driving_80',
+        id: createConsistentId('daily_calm_driving_80'),
         title: 'Zen Driver',
         description: 'Maintain a calm driving score of 80+ today',
         type: ChallengeType.daily,
@@ -180,7 +220,7 @@ class ChallengeService extends ChangeNotifier {
         rewardValue: 50,
       ),
       Challenge(
-        id: 'daily_idle_reduction',
+        id: createConsistentId('daily_idle_reduction'),
         title: 'Idle Buster',
         description: 'Keep idling time under 3 minutes for all trips today',
         type: ChallengeType.daily,
@@ -193,7 +233,7 @@ class ChallengeService extends ChangeNotifier {
       
       // Weekly challenges
       Challenge(
-        id: 'weekly_trips_5',
+        id: createConsistentId('weekly_trips_5'),
         title: 'Regular Driver',
         description: 'Complete 5 trips this week',
         type: ChallengeType.weekly,
@@ -204,7 +244,7 @@ class ChallengeService extends ChangeNotifier {
         rewardValue: 100,
       ),
       Challenge(
-        id: 'weekly_distance_100',
+        id: createConsistentId('weekly_distance_100'),
         title: 'Distance Champion',
         description: 'Drive 100km with eco-score above 80 this week',
         type: ChallengeType.weekly,
@@ -215,7 +255,7 @@ class ChallengeService extends ChangeNotifier {
         rewardValue: 150,
       ),
       Challenge(
-        id: 'weekly_active_days_5',
+        id: createConsistentId('weekly_active_days_5'),
         title: 'Consistent Driver',
         description: 'Drive on 5 different days this week',
         type: ChallengeType.weekly,
@@ -228,7 +268,7 @@ class ChallengeService extends ChangeNotifier {
       
       // Achievement challenges
       Challenge(
-        id: 'achievement_fuel_saved_20',
+        id: createConsistentId('achievement_fuel_saved_20'),
         title: 'Fuel Miser',
         description: 'Save 20 liters of fuel through eco-driving',
         type: ChallengeType.achievement,
@@ -240,7 +280,7 @@ class ChallengeService extends ChangeNotifier {
         rewardValue: 1,
       ),
       Challenge(
-        id: 'achievement_co2_reduced_50',
+        id: createConsistentId('achievement_co2_reduced_50'),
         title: 'Climate Guardian',
         description: 'Reduce CO2 emissions by 50kg',
         type: ChallengeType.achievement,
@@ -252,7 +292,7 @@ class ChallengeService extends ChangeNotifier {
         rewardValue: 1,
       ),
       Challenge(
-        id: 'achievement_trips_100',
+        id: createConsistentId('achievement_trips_100'),
         title: 'Century Driver',
         description: 'Complete 100 trips with the app',
         type: ChallengeType.achievement,
@@ -264,7 +304,7 @@ class ChallengeService extends ChangeNotifier {
         rewardValue: 1,
       ),
       Challenge(
-        id: 'achievement_perfect_week',
+        id: createConsistentId('achievement_perfect_week'),
         title: 'Perfect Week',
         description: 'Complete all daily challenges for 7 consecutive days',
         type: ChallengeType.achievement,
@@ -280,6 +320,9 @@ class ChallengeService extends ChangeNotifier {
   
   /// Initialize the service and ensure system challenges exist
   Future<void> _initialize() async {
+    // TODO: During server migration, update this method to fetch challenges from Firebase
+    // and implement local caching with offline support. See MockReplacementRoadmap.md.
+    
     try {
       _logger.info('Initializing ChallengeService');
       
@@ -362,6 +405,13 @@ class ChallengeService extends ChangeNotifier {
     }
   }
   
+  /// Invalidate the user challenges cache for a specific user
+  /// This is used to ensure fresh data is loaded after a challenge is joined
+  Future<void> invalidateUserChallengesCache(String userId) async {
+    _logger.info('Invalidating user challenges cache for user: $userId');
+    _userChallengesCache.remove(userId);
+  }
+  
   /// Get user challenges of a specific type
   Future<List<UserChallenge>> getUserChallengesByType(String userId, String type) async {
     final allChallenges = await getAllChallenges();
@@ -417,27 +467,44 @@ class ChallengeService extends ChangeNotifier {
         return null;
       }
       
+      _logger.info('Starting challenge for user $userId: ${challenge.title} (ID: $challengeId)');
+      
       // Check if user already has this challenge
       final userChallenges = await getUserChallenges(userId);
-      final existingChallenge = userChallenges.firstWhere(
-        (uc) => uc.challengeId == challengeId,
-        orElse: () => UserChallenge(
-          id: _uuid.v4(),
-          userId: userId,
-          challengeId: challengeId,
-          startedAt: DateTime.now(),
-        ),
-      );
+      _logger.info('User has ${userChallenges.length} existing challenges');
       
-      // If challenge already exists and is not completed, return it
-      if (existingChallenge.id != _uuid.v4() && !existingChallenge.isCompleted) {
-        return existingChallenge;
+      // Check if the user already has this challenge
+      UserChallenge? existingActiveChallenge;
+      for (final uc in userChallenges) {
+        if (uc.challengeId == challengeId && !uc.isCompleted) {
+          existingActiveChallenge = uc;
+          break;
+        }
+      }
+      
+      // If active challenge found, return it
+      if (existingActiveChallenge != null) {
+        _logger.info('User $userId already has an active challenge: $challengeId');
+        return existingActiveChallenge;
+      }
+      
+      // Check if this challenge was completed before
+      UserChallenge? existingCompletedChallenge;
+      for (final uc in userChallenges) {
+        if (uc.challengeId == challengeId && uc.isCompleted) {
+          existingCompletedChallenge = uc;
+          break;
+        }
       }
       
       // If challenge exists but is completed, check if it's a repeatable type
-      if (existingChallenge.id != _uuid.v4() && existingChallenge.isCompleted) {
+      if (existingCompletedChallenge != null) {
+        _logger.info('User $userId has completed this challenge before');
+        
         if (challenge.type == ChallengeType.daily || challenge.type == ChallengeType.weekly) {
           // Create a new instance of the challenge
+          _logger.info('Creating new instance of repeatable challenge type: ${challenge.type}');
+          
           final newChallenge = UserChallenge(
             id: _uuid.v4(),
             userId: userId,
@@ -446,6 +513,7 @@ class ChallengeService extends ChangeNotifier {
           );
           
           await _dataStorageManager.saveUserChallenge(newChallenge);
+          _logger.info('Saved new repeatable challenge instance to database');
           
           // Clear cache
           _userChallengesCache.remove(userId);
@@ -469,13 +537,25 @@ class ChallengeService extends ChangeNotifier {
           return newChallenge;
         } else {
           // Achievement challenges can only be completed once
-          _logger.info('Challenge $challengeId already completed by user $userId');
-          return existingChallenge;
+          _logger.info('Challenge $challengeId already completed by user $userId and is not repeatable');
+          return existingCompletedChallenge;
         }
       }
       
+      // This is a new challenge the user hasn't started before
+      _logger.info('Creating new challenge for user $userId: ${challenge.title}');
+      
+      // Create new challenge
+      final newChallenge = UserChallenge(
+        id: _uuid.v4(),
+        userId: userId,
+        challengeId: challengeId,
+        startedAt: DateTime.now(),
+      );
+      
       // Save the new challenge
-      await _dataStorageManager.saveUserChallenge(existingChallenge);
+      await _dataStorageManager.saveUserChallenge(newChallenge);
+      _logger.info('Saved new challenge to database with ID: ${newChallenge.id}');
       
       // Clear cache
       _userChallengesCache.remove(userId);
@@ -496,7 +576,7 @@ class ChallengeService extends ChangeNotifier {
       _challengeEventController.add(event);
       _logger.info('User $userId started challenge: ${challenge.title}');
       
-      return existingChallenge;
+      return newChallenge;
     } catch (e) {
       _logger.severe('Error starting challenge: $e');
       return null;
@@ -521,15 +601,30 @@ class ChallengeService extends ChangeNotifier {
       
       // Get user challenges
       final userChallenges = await getUserChallenges(userId);
-      final existingChallenge = userChallenges.firstWhere(
-        (uc) => uc.challengeId == challengeId && !uc.isCompleted,
-        orElse: () => UserChallenge(
+      
+      // Look for an existing active challenge
+      UserChallenge? existingChallenge;
+      for (final uc in userChallenges) {
+        if (uc.challengeId == challengeId && !uc.isCompleted) {
+          existingChallenge = uc;
+          break;
+        }
+      }
+      
+      // If no active challenge found, start a new one
+      if (existingChallenge == null) {
+        _logger.info('No active challenge found, starting a new one');
+        existingChallenge = UserChallenge(
           id: _uuid.v4(),
           userId: userId,
           challengeId: challengeId,
           startedAt: DateTime.now(),
-        ),
-      );
+        );
+        
+        // Save the new challenge
+        await _dataStorageManager.saveUserChallenge(existingChallenge);
+        _logger.info('Saved new challenge to database with ID: ${existingChallenge.id}');
+      }
       
       // Update progress
       final wasCompleted = existingChallenge.isCompleted;
@@ -565,10 +660,11 @@ class ChallengeService extends ChangeNotifier {
       
       _challengeEventController.add(event);
       
+      // Log progress update
       if (eventType == 'completed') {
         _logger.info('User $userId completed challenge: ${challenge.title}');
       } else {
-        _logger.info('Updated progress for user $userId on challenge ${challenge.title}: $progress/${challenge.targetValue}');
+        _logger.info('User $userId updated progress on challenge: ${challenge.title} to ${updatedChallenge.progress}/${challenge.targetValue}');
       }
       
       return updatedChallenge;
@@ -712,21 +808,27 @@ class ChallengeService extends ChangeNotifier {
       
       // Process each challenge
       for (final challenge in challenges) {
-        // Skip completed achievement challenges
-        final existingUserChallenge = userChallenges.firstWhere(
-          (uc) => uc.challengeId == challenge.id && !uc.isCompleted,
-          orElse: () => UserChallenge(
+        // Look for an existing active challenge
+        UserChallenge? existingUserChallenge;
+        for (final uc in userChallenges) {
+          if (uc.challengeId == challenge.id && !uc.isCompleted) {
+            existingUserChallenge = uc;
+            break;
+          }
+        }
+        
+        // If this is a new challenge the user doesn't have yet, create and save it
+        if (existingUserChallenge == null) {
+          existingUserChallenge = UserChallenge(
             id: _uuid.v4(),
             userId: userId,
             challengeId: challenge.id,
             startedAt: DateTime.now(),
-          ),
-        );
-        
-        // If this is a new challenge, save it first
-        if (existingUserChallenge.id == _uuid.v4()) {
+          );
+          
           await _dataStorageManager.saveUserChallenge(existingUserChallenge);
           _userChallengesCache.remove(userId);
+          _logger.info('Created new challenge for user: ${challenge.title}');
         }
         
         // Determine current progress based on metric type
@@ -892,15 +994,26 @@ class ChallengeService extends ChangeNotifier {
       
       // Get user challenge
       final userChallenges = await getUserChallenges(userId);
-      final userChallenge = userChallenges.firstWhere(
-        (uc) => uc.challengeId == challengeId,
-        orElse: () => UserChallenge(
+      
+      // Look for an existing challenge
+      UserChallenge? userChallenge;
+      for (final uc in userChallenges) {
+        if (uc.challengeId == challengeId) {
+          userChallenge = uc;
+          break;
+        }
+      }
+      
+      // If no user challenge found, create a template for display
+      // but don't save it to the database
+      if (userChallenge == null) {
+        userChallenge = UserChallenge(
           id: _uuid.v4(),
           userId: userId,
           challengeId: challengeId,
           startedAt: DateTime.now(),
-        ),
-      );
+        );
+      }
       
       // Combine challenge and user challenge info
       return {
@@ -910,9 +1023,6 @@ class ChallengeService extends ChangeNotifier {
         'rewardClaimed': userChallenge.rewardClaimed,
         'startedAt': userChallenge.startedAt.toIso8601String(),
         'completedAt': userChallenge.completedAt?.toIso8601String(),
-        'percentComplete': challenge.targetValue > 0 
-            ? (userChallenge.progress / challenge.targetValue * 100).clamp(0, 100).toInt() 
-            : 0,
       };
     } catch (e) {
       _logger.severe('Error getting detailed challenge: $e');

@@ -472,7 +472,7 @@ class AchievementService extends ChangeNotifier {
       _logger.info('Creating achievement event with ID $eventId');
       
       // Create and broadcast achievement event
-      final event = AchievementEvent(
+      final achievementEvent = AchievementEvent(
         id: eventId,
         userId: userId,
         badgeType: badgeType,
@@ -483,13 +483,15 @@ class AchievementService extends ChangeNotifier {
         isUpgrade: isUpgrade,
       );
       
-      // Emit event to stream
-      _achievementEventController.add(event);
-      _logger.info('${isUpgrade ? "Upgraded" : "Awarded"} badge $badgeName level $level to user $userId');
+      // Broadcast event
+      _achievementEventController.add(achievementEvent);
+      _logger.info('Achievement event broadcasted: $badgeType level $level');
       
-      return event;
+      // Update any metrics if needed
+      
+      return achievementEvent;
     } catch (e) {
-      _logger.severe('Error awarding badge: $e');
+      _logger.warning('Error awarding badge: $e');
       return null;
     }
   }
