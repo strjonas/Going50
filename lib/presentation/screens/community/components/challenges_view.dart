@@ -16,8 +16,15 @@ import 'package:logging/logging.dart';
 /// - Active challenges with progress indicators
 /// - Available challenges that users can join
 /// - Completed challenges section
+/// - Can be displayed in compact mode for the main community screen
 class ChallengesView extends StatefulWidget {
-  const ChallengesView({super.key});
+  /// Whether to display in compact mode with limited entries and UI elements
+  final bool isCompactMode;
+  
+  const ChallengesView({
+    super.key, 
+    this.isCompactMode = false,
+  });
 
   @override
   State<ChallengesView> createState() => _ChallengesViewState();
@@ -218,6 +225,12 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
   
   @override
   Widget build(BuildContext context) {
+    // In compact mode, only show active challenges
+    if (widget.isCompactMode) {
+      return _buildCompactView();
+    }
+    
+    // Otherwise use the full tabbed view
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -248,27 +261,9 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
         
         Expanded(
           child: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(),
-                )
+              ? const Center(child: CircularProgressIndicator())
               : _errorMessage != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _errorMessage!,
-                            style: const TextStyle(color: Colors.red),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _loadChallenges,
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    )
+                  ? Center(child: Text(_errorMessage!))
                   : TabBarView(
                       controller: _tabController,
                       children: [
@@ -1043,5 +1038,259 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
       default:
         return Icons.emoji_events;
     }
+  }
+
+  /// Build compact view for the main community screen - only showing active challenges
+  Widget _buildCompactView() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    if (_errorMessage != null) {
+      return Center(child: Text(_errorMessage!));
+    }
+    
+    List<Widget> challengeWidgets = [];
+    
+    if (_activeChallenges.isEmpty) {
+      challengeWidgets.add(_buildCompactEmptyChallenges());
+    } else {
+      // Show up to 2 challenges to match mockup
+      final displayCount = _activeChallenges.length > 2 ? 2 : _activeChallenges.length;
+      
+      for (int i = 0; i < displayCount; i++) {
+        final userChallenge = _activeChallenges[i];
+        
+        // Find the challenge details
+        final challenge = _allChallenges.firstWhere(
+          (c) => c.id == userChallenge.challengeId,
+          orElse: () => Challenge(
+            id: userChallenge.challengeId,
+            title: 'Unknown Challenge',
+            description: 'Challenge details not available',
+            type: 'unknown',
+            targetValue: 0,
+            difficultyLevel: 1,
+            rewardValue: 0,
+            metricType: 'unknown',
+          ),
+        );
+        
+        challengeWidgets.add(
+          InkWell(
+            onTap: () {
+              // Navigate to challenge detail screen
+              Navigator.of(context).pushNamed(
+                CommunityRoutes.challengeDetail,
+                arguments: challenge.id,
+              );
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: _buildCompactChallengeItem(challenge, userChallenge),
+          ),
+        );
+      }
+    }
+    
+    // Add "Browse All Challenges" button
+    challengeWidgets.add(
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: InkWell(
+          onTap: () {
+            // Navigate to full challenges view
+            Navigator.of(context).pushNamed(
+              CommunityRoutes.challenges,
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14.0),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            child: const Center(
+              child: Text(
+                'Browse All Challenges',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      children: challengeWidgets,
+    );
+  }
+
+  /// Build a compact challenge item for the main community screen
+  Widget _buildCompactChallengeItem(Challenge challenge, UserChallenge userChallenge) {
+    final progress = userChallenge.progress / challenge.targetValue;
+    final formattedChallenge = _formatChallengeForUI(challenge, userChallenge: userChallenge);
+    
+    // Simplified item card to match mockup
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                // Trophy/Challenge icon
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(
+                    Icons.emoji_events_outlined,
+                    color: Colors.green,
+                    size: 28,
+                  ),
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // Challenge info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        formattedChallenge['title'] as String,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8, 
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Ongoing',
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Icon(Icons.people, size: 16, color: Colors.grey.shade600),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${formattedChallenge['participants']}',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Progress section
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${(progress * 100).toInt()}% Complete',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      '${userChallenge.progress}/${challenge.targetValue}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    minHeight: 8,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactEmptyChallenges() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.emoji_events_outlined,
+            size: 48,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'No active challenges',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Join a challenge to get started',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 } 

@@ -7,7 +7,9 @@ import 'package:going50/core/theme/app_colors.dart';
 /// These components ensure consistent styling and behavior across
 /// the leaderboard and challenges views.
 
-/// A segmented filter bar (Friends/Local/Global or Active/Available/Completed)
+/// SegmentedFilterBar provides a segmented control for filtering content.
+///
+/// Used across multiple components for consistent filtering UI.
 class SegmentedFilterBar extends StatelessWidget {
   final List<String> options;
   final int selectedIndex;
@@ -22,42 +24,44 @@ class SegmentedFilterBar extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: List.generate(options.length, (index) {
-            return Expanded(
-              child: _buildFilterTab(options[index], index),
-            );
-          }),
+    // Clean, modern design with better spacing and visual clarity
+    return Container(
+      height: 52, // Optimal touch target height
+      margin: const EdgeInsets.only(top: 4.0, bottom: 16.0), // Better spacing
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white, // Clean white background
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade200, width: 1), // Subtle bottom border only
         ),
       ),
-    );
-  }
-  
-  Widget _buildFilterTab(String text, int index) {
-    final bool isSelected = selectedIndex == index;
-    
-    return GestureDetector(
-      onTap: () => onSelectionChanged(index),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey.shade800,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 14,
+      child: Row(
+        children: List.generate(
+          options.length,
+          (index) => Expanded(
+            child: GestureDetector(
+              onTap: () => onSelectionChanged(index),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                decoration: BoxDecoration(
+                  color: Colors.white, // Keep it clean
+                  borderRadius: BorderRadius.circular(12), // More rounded corners
+                  border: selectedIndex == index
+                      ? Border.all(color: AppColors.primary, width: 1.5) // Slightly thicker border for emphasis
+                      : null,
+                ),
+                child: Center(
+                  child: Text(
+                    options[index],
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: selectedIndex == index ? FontWeight.w600 : FontWeight.w400,
+                      color: selectedIndex == index ? AppColors.primary : Colors.grey.shade500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -65,7 +69,9 @@ class SegmentedFilterBar extends StatelessWidget {
   }
 }
 
-/// A horizontal filter chip group for time periods (Week/Month/All time)
+/// TimeFilterChipGroup provides chips for time-based filtering.
+///
+/// Used across multiple components for consistent time filtering UI.
 class TimeFilterChipGroup extends StatelessWidget {
   final List<String> options;
   final int selectedIndex;
@@ -80,43 +86,52 @@ class TimeFilterChipGroup extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 8),
-      child: SizedBox(
-        height: 36,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: options.length,
-          separatorBuilder: (context, index) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            return GestureDetector(
-              onTap: () => onSelectionChanged(index),
-              child: _buildTimeFilterChip(options[index], index == selectedIndex),
+    // Modern pill-style design with better spacing
+    return Container(
+      height: 44, // Optimal height
+      margin: const EdgeInsets.only(bottom: 24.0), // More bottom margin for better section separation
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        children: List.generate(
+          options.length,
+          (index) {
+            final isSelected = selectedIndex == index;
+            
+            return Padding(
+              padding: EdgeInsets.only(right: index < options.length - 1 ? 12 : 0), // More space between chips
+              child: GestureDetector(
+                onTap: () => onSelectionChanged(index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200), // Smooth transition
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), // More comfortable padding
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.primary : Colors.white,
+                    borderRadius: BorderRadius.circular(22), // More pronounced pill shape
+                    border: Border.all(
+                      color: isSelected ? AppColors.primary : Colors.grey.shade300,
+                      width: isSelected ? 1.5 : 1, // Thicker border for selected item
+                    ),
+                    // Subtle shadow for depth
+                    boxShadow: isSelected ? [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ] : null,
+                  ),
+                  child: Text(
+                    options[index],
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isSelected ? Colors.white : Colors.grey.shade700,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ),
             );
           },
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildTimeFilterChip(String label, bool isSelected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.white,
-        borderRadius: BorderRadius.circular(4), // Squared corners as requested
-        border: Border.all(
-          color: isSelected ? AppColors.primary : Colors.grey.shade300,
-          width: 1,
-        ),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? AppColors.primary : Colors.grey.shade800,
-          fontWeight: FontWeight.w500,
-          fontSize: 14,
         ),
       ),
     );

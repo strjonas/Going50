@@ -8,6 +8,8 @@ import 'package:going50/presentation/screens/community/components/friends_view.d
 /// CommunityScreen is the main screen for the Community tab.
 ///
 /// This screen provides access to leaderboards, challenges, and friend features.
+/// The screen is organized as a scrollable list of sections rather than tabs
+/// to reduce navigation depth and improve user experience.
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
 
@@ -15,112 +17,451 @@ class CommunityScreen extends StatefulWidget {
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
 
-class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) {
-        setState(() {});
-      }
-    });
-  }
-  
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-  
+class _CommunityScreenState extends State<CommunityScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Use white background to match screenshot
+      backgroundColor: Colors.grey.shade100, // Light gray background between cards
       appBar: AppBar(
         title: const Text(
           'Community',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: Colors.black,
+            fontSize: 26, // Increased size to be larger than section headings
           ),
         ),
-        backgroundColor: AppColors.primary, // Primary color for AppBar
+        backgroundColor: Colors.white, // White background for AppBar
         elevation: 0, // Remove shadow for a more modern look
-        centerTitle: true,
+        centerTitle: false, // Left-aligned title
+        actions: [
+          // Search icon in the app bar
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.black),
+            onPressed: () {
+              // TODO: Implement search functionality
+            },
+          ),
+        ],
       ),
-      body: Column(
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 12), // Add top padding
+            
+            // Leaderboard Section - Compact version
+            _buildLeaderboardSection(),
+            
+            const SizedBox(height: 16), // Space between sections
+            
+            // Active Challenges Section - Compact version
+            _buildActiveChallengesSection(),
+            
+            const SizedBox(height: 16), // Space between sections
+            
+            // Friends Section - Compact version
+            _buildFriendsSection(),
+            
+            // Add bottom padding to ensure content doesn't get cut off
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildLeaderboardSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: Colors.grey.shade200), // Add thin border
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Tab bar with icons - fixed width for proper alignment
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 12.0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  width: MediaQuery.of(context).size.width / 3,
-                  child: _buildIconTab(0, Icons.leaderboard, 'Leaderboard'),
+                const Text(
+                  'Leaderboard',
+                  style: TextStyle(
+                    fontSize: 22, // Smaller than parent title, larger than subheadings
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                SizedBox(
-                  width: MediaQuery.of(context).size.width / 3,
-                  child: _buildIconTab(1, Icons.emoji_events, 'Challenges'),
-                ),
-                SizedBox(
-                  width: MediaQuery.of(context).size.width / 3,
-                  child: _buildIconTab(2, Icons.people, 'Friends'),
+                GestureDetector(
+                  onTap: () {
+                    // Navigate to full leaderboard view with proper back navigation
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => Scaffold(
+                          appBar: AppBar(
+                            title: const Text('Leaderboard'),
+                            elevation: 0,
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            centerTitle: false,
+                          ),
+                          body: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8.0),
+                            child: LeaderboardView(),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    'View All',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.primary, // Green color like in mockup
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          
-          const Divider(height: 1, color: Colors.black12),
-          
-          // Add spacing to match the image
-          const SizedBox(height: 12),
-          
-          // Expanded tab content
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: const [
-                LeaderboardView(),
-                ChallengesView(),
-                FriendsView(),
-              ],
-            ),
+          // Embed a compact version of LeaderboardView
+          SizedBox(
+            height: 320, // Fixed height for compact view
+            child: const LeaderboardView(isCompactMode: true),
           ),
         ],
       ),
     );
   }
   
-  Widget _buildIconTab(int index, IconData icon, String label) {
-    final bool isSelected = _tabController.index == index;
-    
-    return GestureDetector(
-      onTap: () {
-        _tabController.animateTo(index);
-        setState(() {});
-      },
+  Widget _buildActiveChallengesSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: Colors.grey.shade200), // Add thin border
+      ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            color: isSelected ? AppColors.primary : Colors.grey,
-            size: 28,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: isSelected ? AppColors.primary : Colors.grey,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Active Challenges',
+                  style: TextStyle(
+                    fontSize: 22, // Smaller than parent title, larger than subheadings
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    // Navigate to full challenges view with proper back navigation
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => Scaffold(
+                          appBar: AppBar(
+                            title: const Text('Challenges'),
+                            elevation: 0,
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            centerTitle: false,
+                          ),
+                          body: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8.0),
+                            child: ChallengesView(),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    'View All', 
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.primary, // Green color like in mockup
+                    ),
+                  ),
+                ),
+              ],
             ),
+          ),
+          // Embed a compact version of ChallengesView with increased height
+          SizedBox(
+            height: 320, // Adjusted height for compact view
+            child: const ChallengesView(isCompactMode: true),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildFriendsSection() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(color: Colors.grey.shade200), // Add thin border
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Friends',
+                  style: TextStyle(
+                    fontSize: 22, // Smaller than parent title, larger than subheadings
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    // Show add friends dialog
+                    _showAddFriendsDialog(context);
+                  },
+                  child: Text(
+                    'Add Friends',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.primary, // Green color like in mockup
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Embed a compact version of FriendsView
+          SizedBox(
+            height: 320, // Fixed height for compact view
+            child: const FriendsView(isCompactMode: true),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Keep the existing dialog logic for adding friends
+  void _showAddFriendsDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Find Friends',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Connect with other eco-drivers to compare your performance and compete in challenges together.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: const TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search by name or email',
+                      prefixIcon: Icon(Icons.search),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 15,
+                        horizontal: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Suggested Friends',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      _buildSuggestedFriendTile(context, 'Riley Johnson', 'Based on your location', 4, 88),
+                      const SizedBox(height: 12),
+                      _buildSuggestedFriendTile(context, 'Morgan Smith', 'Similar driving patterns', 2, 92),
+                      const SizedBox(height: 12),
+                      _buildSuggestedFriendTile(context, 'Casey Williams', 'Completed same challenges', 1, 79),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildSuggestedFriendTile(BuildContext context, String name, String reason, int mutualFriends, int ecoScore) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          // Avatar placeholder
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                name.substring(0, 1).toUpperCase(),
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          
+          // Friend info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  reason,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.people_outline,
+                      size: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$mutualFriends mutual',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.eco_outlined,
+                      size: 12,
+                      color: Colors.green.shade600,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Score: $ecoScore',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          // Add button
+          ElevatedButton(
+            onPressed: () {
+              // Add friend functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Friend request sent to $name'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              minimumSize: const Size(40, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            child: const Text('Add'),
           ),
         ],
       ),

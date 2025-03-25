@@ -12,8 +12,15 @@ import 'package:going50/presentation/screens/community/components/shared_filters
 /// - Time period filter (week, month, all time)
 /// - User ranking display
 /// - List of top performers
+/// - Can be displayed in compact mode for the main community screen
 class LeaderboardView extends StatefulWidget {
-  const LeaderboardView({super.key});
+  /// Whether to display in compact mode with limited entries and UI elements
+  final bool isCompactMode;
+  
+  const LeaderboardView({
+    super.key, 
+    this.isCompactMode = false,
+  });
 
   @override
   State<LeaderboardView> createState() => _LeaderboardViewState();
@@ -44,6 +51,12 @@ class _LeaderboardViewState extends State<LeaderboardView> {
       _timeFilterIndex = _timeframeValues.indexOf(provider.timeframe);
     }
     
+    // In compact mode, show a simplified view with fewer entries
+    if (widget.isCompactMode) {
+      return _buildCompactView(context, provider, leaderboardEntries);
+    }
+    
+    // Otherwise show the full view
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -74,21 +87,22 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         // Your Ranking section
         _buildUserRankingCard(context, provider),
         
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         
         // Top Performers section
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
+          padding: EdgeInsets.symmetric(horizontal: 18.0),
           child: Text(
             'Top Performers',
             style: TextStyle(
-              fontSize: 18, 
+              fontSize: 20, 
               fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
             ),
           ),
         ),
         
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         
         // List of top performers
         Expanded(
@@ -102,6 +116,87 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     );
   }
   
+  /// Build compact view for the main community screen
+  Widget _buildCompactView(BuildContext context, SocialProvider provider, List<dynamic> entries) {
+    return Column(
+      children: [
+        // Using a consistent design for the filter tabs similar to SegmentedFilterBar
+        Container(
+          height: 52, // Reduced height for compact view
+          margin: const EdgeInsets.only(bottom: 20.0, left: 16.0, right: 16.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200, width: 1),
+            // Subtle shadow
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.shade100,
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            children: List.generate(
+              _filterOptions.length,
+              (index) => Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    _filterIndex = index;
+                    provider.setLeaderboardType(_leaderboardTypeValues[index]);
+                  }),
+                  child: Container(
+                    margin: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: _filterIndex == index ? Colors.white : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      border: _filterIndex == index 
+                          ? Border.all(color: AppColors.primary, width: 1.5)
+                          : null,
+                    ),
+                    child: Center(
+                      child: Text(
+                        _filterOptions[index],
+                        style: TextStyle(
+                          fontSize: 15, // Slightly smaller for compact view
+                          fontWeight: _filterIndex == index ? FontWeight.w600 : FontWeight.w400,
+                          color: _filterIndex == index ? AppColors.primary : Colors.grey.shade500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        
+        // User ranking - simplified version
+        _buildUserRankingCard(context, provider),
+        
+        const SizedBox(height: 16),
+        
+        // Only show top 5 entries in compact mode - with better spacing
+        Expanded(
+          child: provider.isLoading 
+            ? const Center(child: CircularProgressIndicator())
+            : entries.isEmpty
+              ? const Center(child: Text('No leaderboard data available'))
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: entries.length > 5 ? 5 : entries.length,
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    return _buildCompactLeaderboardItem(context, entry);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+  
   Widget _buildUserRankingCard(BuildContext context, SocialProvider provider) {
     // Find user's rank in the leaderboard entries
     final userRank = provider.leaderboardEntries
@@ -110,20 +205,36 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0),
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300, width: 1),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
+        // Subtle shadow for depth
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade100,
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: AppColors.primary,
               shape: BoxShape.circle,
+              // Subtle glow effect for emphasis
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.2),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
             child: Center(
               child: Text(
@@ -131,12 +242,12 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 20,
+                  fontSize: 22,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,17 +255,19 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                 const Text(
                   'Your Ranking',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
                   ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   userRank['rank'] == 0 
                       ? 'Complete more trips to get ranked' 
                       : 'Score: ${userRank['score']}',
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
+                    fontSize: 15,
+                    color: Colors.grey.shade600,
                   ),
                 ),
               ],
@@ -180,18 +293,18 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     final isUser = entry['isUser'] == true;
     
     return Container(
-      margin: const EdgeInsets.only(bottom: 8.0),
-      padding: const EdgeInsets.all(12.0),
+      margin: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
       decoration: BoxDecoration(
-        color: isUser ? AppColors.primary.withOpacity(0.1) : Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        color: isUser ? AppColors.primary.withOpacity(0.07) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isUser ? AppColors.primary.withOpacity(0.3) : Colors.grey.shade200,
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade200,
+            color: Colors.grey.shade100,
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -200,11 +313,18 @@ class _LeaderboardViewState extends State<LeaderboardView> {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: _getRankColor(entry['rank']),
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: _getRankColor(entry['rank']).withOpacity(0.3),
+                  blurRadius: 4,
+                  spreadRadius: 0,
+                ),
+              ],
             ),
             child: Center(
               child: Text(
@@ -212,11 +332,12 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 18),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,10 +345,12 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                 Text(
                   entry['name'],
                   style: TextStyle(
-                    fontWeight: isUser ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: isUser ? FontWeight.bold : FontWeight.w600,
                     fontSize: 16,
+                    color: isUser ? AppColors.primary : Colors.black87,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   'Score: ${entry['score']}',
                   style: TextStyle(
@@ -239,6 +362,129 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+  
+  /// Build a more compact leaderboard item for the compact view
+  Widget _buildCompactLeaderboardItem(BuildContext context, dynamic entry) {
+    final bool isUser = entry['isUser'] ?? false;
+    final bool isTopPerformer = entry['rank'] == 1;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8.0),
+      decoration: BoxDecoration(
+        color: isUser ? Colors.grey.shade200 : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        child: Row(
+          children: [
+            // Rank
+            Container(
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
+              child: Text(
+                '${entry['rank']}',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ),
+            
+            const SizedBox(width: 12),
+            
+            // User avatar
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                shape: BoxShape.circle,
+              ),
+              child: entry['photoUrl'] != null && entry['photoUrl'].isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.network(
+                      entry['photoUrl'],
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : Icon(
+                    Icons.person,
+                    color: Colors.grey.shade700,
+                  ),
+            ),
+            
+            const SizedBox(width: 12),
+            
+            // User name with badge for top performer
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        entry['name'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isUser ? AppColors.primary : Colors.black,
+                        ),
+                      ),
+                      if (isTopPerformer) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.emoji_events_outlined,
+                                color: Colors.amber.shade800,
+                                size: 14,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Top Driver',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.amber.shade800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            // Score
+            Text(
+              '${entry['score']}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

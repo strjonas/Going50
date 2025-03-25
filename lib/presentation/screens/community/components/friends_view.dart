@@ -12,8 +12,15 @@ import 'package:going50/core/constants/route_constants.dart';
 /// - List of current friends
 /// - Ability to search for new friends
 /// - Friend request functionality
+/// - Can be displayed in compact mode for the main community screen
 class FriendsView extends StatefulWidget {
-  const FriendsView({super.key});
+  /// Whether to display in compact mode with limited entries and UI elements
+  final bool isCompactMode;
+  
+  const FriendsView({
+    super.key, 
+    this.isCompactMode = false,
+  });
 
   @override
   State<FriendsView> createState() => _FriendsViewState();
@@ -35,6 +42,12 @@ class _FriendsViewState extends State<FriendsView> {
     final provider = Provider.of<SocialProvider>(context);
     final friends = provider.friends;
     
+    // In compact mode, display a simplified view
+    if (widget.isCompactMode) {
+      return _buildCompactView(context, friends, provider);
+    }
+    
+    // Full view with search
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -46,6 +59,151 @@ class _FriendsViewState extends State<FriendsView> {
           _buildFriendsList(context, friends),
       ],
     );
+  }
+  
+  /// Build a compact view of friends for the main community screen
+  Widget _buildCompactView(BuildContext context, List<UserProfile> friends, SocialProvider provider) {
+    if (provider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    if (friends.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.people_outline,
+              size: 48,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'No friends yet',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Show a limited number of friends in a simple format
+    // Use just 2 items to ensure they're fully visible in compact view
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: friends.length > 2 ? 2 : friends.length,
+      itemBuilder: (context, index) {
+        final friend = friends[index];
+        return InkWell(
+          onTap: () {
+            // Navigate to friend profile
+            Navigator.of(context).pushNamed(
+              CommunityRoutes.friendProfile,
+              arguments: friend.id,
+            );
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: _buildCompactFriendItem(context, friend),
+        );
+      },
+    );
+  }
+  
+  /// Build a compact friend item for the main screen
+  Widget _buildCompactFriendItem(BuildContext context, UserProfile friend) {
+    // Get time-based activity text based on createdAt timestamp
+    final activityText = _getRelativeActivityTime(friend.createdAt);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          // Avatar placeholder
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                friend.name.substring(0, 1).toUpperCase(),
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          
+          // Friend name
+          Expanded(
+            child: Text(
+              friend.name,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          
+          // Activity indicator - using actual data from user profile
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.access_time,
+                  size: 14,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  activityText,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Helper to determine relative time for friend activity
+  String _getRelativeActivityTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${(difference.inDays / 7).round()}w ago';
+    }
   }
   
   Widget _buildSearchBar(BuildContext context) {
