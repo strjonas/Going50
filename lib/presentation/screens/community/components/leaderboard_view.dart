@@ -3,31 +3,80 @@ import 'package:provider/provider.dart';
 
 import 'package:going50/core/theme/app_colors.dart';
 import 'package:going50/presentation/providers/social_provider.dart';
+import 'package:going50/presentation/screens/community/components/shared_filters.dart';
 
 /// LeaderboardView displays the user ranking based on eco-driving performance.
 ///
 /// This component includes:
-/// - Segmented control for leaderboard type (Friends/Local/Global)
-/// - Time period selector
+/// - Filter for scope (friends, local, global)
+/// - Time period filter (week, month, all time)
 /// - User ranking display
 /// - List of top performers
-class LeaderboardView extends StatelessWidget {
+class LeaderboardView extends StatefulWidget {
   const LeaderboardView({super.key});
 
+  @override
+  State<LeaderboardView> createState() => _LeaderboardViewState();
+}
+
+class _LeaderboardViewState extends State<LeaderboardView> {
+  int _filterIndex = 0;
+  int _timeFilterIndex = 0;
+  
+  final List<String> _filterOptions = ["Friends", "Local", "Global"];
+  final List<String> _timeFilterOptions = ["Week", "Month", "All time"];
+  
+  // Maps our UI indices to the provider's values
+  final List<String> _leaderboardTypeValues = ["friends", "regional", "global"];
+  final List<String> _timeframeValues = ["weekly", "monthly", "alltime"];
+  
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<SocialProvider>(context);
     final leaderboardEntries = provider.leaderboardEntries;
     
+    // Initialize the filter indices based on provider state
+    if (_filterIndex != _leaderboardTypeValues.indexOf(provider.leaderboardType)) {
+      _filterIndex = _leaderboardTypeValues.indexOf(provider.leaderboardType);
+    }
+    
+    if (_timeFilterIndex != _timeframeValues.indexOf(provider.timeframe)) {
+      _timeFilterIndex = _timeframeValues.indexOf(provider.timeframe);
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSegmentedControl(context, provider),
-        const SizedBox(height: 16),
-        _buildTimePeriodSelector(context, provider),
-        const SizedBox(height: 24),
+        // Using shared segmented filter bar
+        SegmentedFilterBar(
+          options: _filterOptions,
+          selectedIndex: _filterIndex,
+          onSelectionChanged: (index) {
+            setState(() {
+              _filterIndex = index;
+              provider.setLeaderboardType(_leaderboardTypeValues[index]);
+            });
+          },
+        ),
+        
+        // Using shared time filter chip group
+        TimeFilterChipGroup(
+          options: _timeFilterOptions,
+          selectedIndex: _timeFilterIndex,
+          onSelectionChanged: (index) {
+            setState(() {
+              _timeFilterIndex = index;
+              provider.setTimeframe(_timeframeValues[index]);
+            });
+          },
+        ),
+        
+        // Your Ranking section
         _buildUserRankingCard(context, provider),
+        
         const SizedBox(height: 16),
+        
+        // Top Performers section
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.0),
           child: Text(
@@ -38,7 +87,10 @@ class LeaderboardView extends StatelessWidget {
             ),
           ),
         ),
+        
         const SizedBox(height: 8),
+        
+        // List of top performers
         Expanded(
           child: provider.isLoading 
             ? const Center(child: CircularProgressIndicator())
@@ -47,98 +99,6 @@ class LeaderboardView extends StatelessWidget {
               : _buildLeaderboardList(context, leaderboardEntries),
         ),
       ],
-    );
-  }
-  
-  Widget _buildSegmentedControl(BuildContext context, SocialProvider provider) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            _buildSegmentButton(
-              context, 'Friends', 
-              provider.leaderboardType == 'friends', 
-              () => provider.setLeaderboardType('friends')
-            ),
-            _buildSegmentButton(
-              context, 'Local', 
-              provider.leaderboardType == 'regional', 
-              () => provider.setLeaderboardType('regional')
-            ),
-            _buildSegmentButton(
-              context, 'Global', 
-              provider.leaderboardType == 'global', 
-              () => provider.setLeaderboardType('global')
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildSegmentButton(BuildContext context, String text, bool isActive, VoidCallback onTap) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isActive ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: isActive ? Colors.white : Colors.black,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildTimePeriodSelector(BuildContext context, SocialProvider provider) {
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          _buildTimeChip('Week', provider.timeframe == 'weekly', 
-              () => provider.setTimeframe('weekly')),
-          const SizedBox(width: 8),
-          _buildTimeChip('Month', provider.timeframe == 'monthly', 
-              () => provider.setTimeframe('monthly')),
-          const SizedBox(width: 8),
-          _buildTimeChip('All time', provider.timeframe == 'alltime', 
-              () => provider.setTimeframe('alltime')),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildTimeChip(String label, bool isSelected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Chip(
-        label: Text(label),
-        backgroundColor: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.grey.shade100,
-        side: BorderSide(
-          color: isSelected ? AppColors.primary : Colors.grey.shade300,
-          width: 1,
-        ),
-        labelStyle: TextStyle(
-          color: isSelected ? AppColors.primary : Colors.grey.shade800,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
     );
   }
   
@@ -152,15 +112,15 @@ class LeaderboardView extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16.0),
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withOpacity(0.5), width: 1),
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: AppColors.primary,
               shape: BoxShape.circle,
@@ -188,7 +148,6 @@ class LeaderboardView extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
                 Text(
                   userRank['rank'] == 0 
                       ? 'Complete more trips to get ranked' 
@@ -206,146 +165,88 @@ class LeaderboardView extends StatelessWidget {
     );
   }
   
-  Widget _buildLeaderboardList(BuildContext context, List<Map<String, dynamic>> entries) {
+  Widget _buildLeaderboardList(BuildContext context, List<dynamic> entries) {
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: entries.length,
       itemBuilder: (context, index) {
         final entry = entries[index];
-        final bool isUser = entry['isUser'] == true;
-        final bool isFriend = entry['isFriend'] == true;
-        
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isUser ? AppColors.primary.withOpacity(0.1) : Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isUser ? AppColors.primary.withOpacity(0.5) : Colors.grey.shade200,
-              width: 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              // Rank
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: _getRankColor(entry['rank']),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    entry['rank'].toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              
-              // Avatar placeholder
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.person,
-                  color: Colors.grey.shade700,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              
-              // Name and score
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          entry['name'] ?? 'Unknown',
-                          style: TextStyle(
-                            fontWeight: isUser ? FontWeight.bold : FontWeight.normal,
-                            fontSize: 14,
-                          ),
-                        ),
-                        if (isUser) ...[
-                          const SizedBox(width: 4),
-                          const Text('(You)', style: TextStyle(fontSize: 12)),
-                        ],
-                        if (isFriend && !isUser) ...[
-                          const SizedBox(width: 4),
-                          const Icon(Icons.people, size: 14, color: AppColors.secondary),
-                        ],
-                      ],
-                    ),
-                    Text(
-                      'Score: ${entry['score']}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // Trend indicator
-              _buildTrendIndicator(entry['trend']),
-            ],
-          ),
-        );
+        return _buildLeaderboardItem(context, entry);
       },
     );
   }
   
-  Widget _buildTrendIndicator(String trend) {
-    IconData icon;
-    Color color;
-    
-    switch (trend) {
-      case 'up':
-        icon = Icons.arrow_upward;
-        color = AppColors.success;
-        break;
-      case 'down':
-        icon = Icons.arrow_downward;
-        color = AppColors.error;
-        break;
-      case 'same':
-      default:
-        icon = Icons.remove;
-        color = AppColors.neutralGray;
-        break;
-    }
+  Widget _buildLeaderboardItem(BuildContext context, Map<String, dynamic> entry) {
+    final isUser = entry['isUser'] == true;
     
     return Container(
-      padding: const EdgeInsets.all(4),
+      margin: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        shape: BoxShape.circle,
+        color: isUser ? AppColors.primary.withOpacity(0.1) : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isUser ? AppColors.primary.withOpacity(0.3) : Colors.grey.shade200,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Icon(
-        icon,
-        color: color,
-        size: 16,
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: _getRankColor(entry['rank']),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                entry['rank'].toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry['name'],
+                  style: TextStyle(
+                    fontWeight: isUser ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  'Score: ${entry['score']}',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
   
   Color _getRankColor(int rank) {
-    if (rank == 1) return const Color(0xFFFFD700); // Gold
-    if (rank == 2) return const Color(0xFFC0C0C0); // Silver
-    if (rank == 3) return const Color(0xFFCD7F32); // Bronze
-    return Colors.grey.shade600; // Others
+    if (rank == 1) return Colors.amber;
+    if (rank == 2) return Colors.grey.shade400;
+    if (rank == 3) return Colors.brown.shade300;
+    return AppColors.primary;
   }
 } 

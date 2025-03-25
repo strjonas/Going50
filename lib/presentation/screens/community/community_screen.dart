@@ -22,6 +22,11 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
   }
   
   @override
@@ -33,27 +38,90 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // Use white background to match screenshot
       appBar: AppBar(
-        title: const Text('Community'),
-        centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: Colors.grey.shade700,
-          indicatorColor: AppColors.primary,
-          tabs: const [
-            Tab(icon: Icon(Icons.leaderboard), text: 'Leaderboard'),
-            Tab(icon: Icon(Icons.emoji_events), text: 'Challenges'),
-            Tab(icon: Icon(Icons.people), text: 'Friends'),
-          ],
+        title: const Text(
+          'Community',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
+        backgroundColor: AppColors.primary, // Primary color for AppBar
+        elevation: 0, // Remove shadow for a more modern look
+        centerTitle: true,
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: const [
-          LeaderboardView(),
-          ChallengesView(),
-          FriendsView(),
+      body: Column(
+        children: [
+          // Tab bar with icons - fixed width for proper alignment
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: MediaQuery.of(context).size.width / 3,
+                  child: _buildIconTab(0, Icons.leaderboard, 'Leaderboard'),
+                ),
+                SizedBox(
+                  width: MediaQuery.of(context).size.width / 3,
+                  child: _buildIconTab(1, Icons.emoji_events, 'Challenges'),
+                ),
+                SizedBox(
+                  width: MediaQuery.of(context).size.width / 3,
+                  child: _buildIconTab(2, Icons.people, 'Friends'),
+                ),
+              ],
+            ),
+          ),
+          
+          const Divider(height: 1, color: Colors.black12),
+          
+          // Add spacing to match the image
+          const SizedBox(height: 12),
+          
+          // Expanded tab content
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: const [
+                LeaderboardView(),
+                ChallengesView(),
+                FriendsView(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildIconTab(int index, IconData icon, String label) {
+    final bool isSelected = _tabController.index == index;
+    
+    return GestureDetector(
+      onTap: () {
+        _tabController.animateTo(index);
+        setState(() {});
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: isSelected ? AppColors.primary : Colors.grey,
+            size: 28,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: isSelected ? AppColors.primary : Colors.grey,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );
