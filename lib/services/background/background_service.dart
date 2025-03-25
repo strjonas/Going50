@@ -11,6 +11,7 @@ import 'package:going50/services/driving/data_collection_service.dart';
 import 'package:going50/services/driving/obd_connection_service.dart';
 import 'package:going50/services/driving/trip_service.dart';
 import 'package:going50/services/user/preferences_service.dart';
+import 'package:going50/services/background/notification_service.dart';
 import 'package:going50/core_models/combined_driving_data.dart';
 
 /// ServiceStatus represents the current state of the background service
@@ -52,6 +53,7 @@ class BackgroundService extends ChangeNotifier {
   final ObdConnectionService _obdConnectionService;
   final TripService _tripService;
   final PreferencesService _preferencesService;
+  late final NotificationService _notificationService;
   
   // Service state
   ServiceStatus _serviceStatus = ServiceStatus.inactive;
@@ -79,6 +81,13 @@ class BackgroundService extends ChangeNotifier {
     _methodChannel.setMethodCallHandler(_handleMethodCall);
     _checkServiceStatus();
     _loadPowerSaveSettings();
+  }
+  
+  /// Set the notification service
+  /// 
+  /// This is done after creation to avoid circular dependencies
+  void setNotificationService(NotificationService notificationService) {
+    _notificationService = notificationService;
   }
   
   /// Get current service status
@@ -119,7 +128,23 @@ class BackgroundService extends ChangeNotifier {
       // Configure background operation mode based on user preferences
       await _configureBackgroundMode();
       
+      // Show a notification that the background service is starting
       if (Platform.isAndroid) {
+        // Send startup notification if we have the notification service
+        try {
+          if (_notificationService != null) {
+            await _notificationService.showNotification(
+              title: 'Going50 Background Service',
+              body: 'Starting data collection service...',
+              type: NotificationType.background,
+              priority: NotificationPriority.low,
+            );
+          }
+        } catch (e) {
+          _logger.warning('Error showing startup notification: $e');
+          // Continue even if notification fails
+        }
+        
         // Get the callback handle for the static entry point
         final callbackHandle = await _getCallbackHandle();
         if (callbackHandle == null) {
@@ -268,17 +293,26 @@ class BackgroundService extends ChangeNotifier {
     _logger.info('Received method call: ${call.method}');
     
     switch (call.method) {
-      case 'onServiceStarted':
-        _serviceStatus = ServiceStatus.running;
-        notifyListeners();
-        break;
+      case 'onServiceStatusChanged':
+        final String status = call.arguments['status'] as String;
+        _logger.info('Service status changed: $status');
         
-      case 'onServiceStopped':
-        _serviceStatus = ServiceStatus.inactive;
-        _stopDataListening();
-        _stopHealthCheck();
+        switch (status) {
+          case 'started':
+            _serviceStatus = ServiceStatus.running;
+            _notifyServiceRunning();
+            break;
+          case 'stopped':
+            _serviceStatus = ServiceStatus.inactive;
+            break;
+          case 'error':
+            final String errorMessage = call.arguments['errorMessage'] as String;
+            _setError(errorMessage);
+            break;
+        }
+        
         notifyListeners();
-        break;
+        return null;
         
       case 'onLowMemory':
         // Handle low memory warning
@@ -299,6 +333,7 @@ class BackgroundService extends ChangeNotifier {
         
       default:
         _logger.warning('Unknown method call: ${call.method}');
+        throw MissingPluginException();
     }
   }
   
@@ -533,6 +568,22 @@ class BackgroundService extends ChangeNotifier {
     } catch (e) {
       _logger.severe('Error getting callback handle: $e');
       return null;
+    }
+  }
+  
+  /// Notify user that the service is running via notification
+  void _notifyServiceRunning() {
+    try {
+      if (_notificationService != null) {
+        _notificationService.showNotification(
+          title: 'Going50 Active',
+          body: 'Eco-driving monitoring is active. Your data is being collected in the background.',
+          type: NotificationType.background,
+          priority: NotificationPriority.low,
+        );
+      }
+    } catch (e) {
+      _logger.warning('Error showing service running notification: $e');
     }
   }
   

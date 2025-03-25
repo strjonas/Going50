@@ -14,6 +14,7 @@ import 'package:going50/services/service_locator.dart';
 import 'package:going50/services/gamification/achievement_service.dart';
 import 'package:going50/services/gamification/challenge_service.dart';
 import 'package:going50/services/background/background_service.dart';
+import 'package:going50/services/background/notification_service.dart';
 
 // Model imports
 import 'package:going50/core_models/trip.dart';
@@ -56,6 +57,7 @@ class DrivingService extends ChangeNotifier {
   late final PermissionService _permissionService;
   late final AchievementService _achievementService;
   late final ChallengeService _challengeService;
+  late final NotificationService _notificationService;
   BackgroundService? _backgroundService;
   
   // Service state
@@ -91,9 +93,16 @@ class DrivingService extends ChangeNotifier {
     _permissionService = serviceLocator<PermissionService>();
     _achievementService = serviceLocator<AchievementService>();
     _challengeService = serviceLocator<ChallengeService>();
+    _notificationService = serviceLocator<NotificationService>();
     
-    // Instead of directly trying to get the background service, which can cause circular 
-    // dependency issues, we'll initialize it later once both services are registered
+    // Access the background service after both services are initialized
+    try {
+      _backgroundService = serviceLocator<BackgroundService>();
+      // Set the notification service in the background service to avoid circular dependencies
+      _backgroundService?.setNotificationService(_notificationService);
+    } catch (e) {
+      _logger.warning('Background service not available: $e');
+    }
     
     _setupEventListeners();
     _initializeServices();
@@ -229,70 +238,91 @@ class DrivingService extends ChangeNotifier {
     notifyListeners();
   }
   
-  /// Handles driving behavior events from the analytics service
+  /// Handles driving behavior events from analytics service
   void _handleDrivingBehaviorEvent(DrivingBehaviorEvent event) {
-    // Convert behavior event to driving event
-    final tripId = _tripService.currentTrip?.id ?? 'no_trip';
-    final drivingEvent = DrivingEvent(
-      id: _uuid.v4(),
-      tripId: tripId,
-      timestamp: event.timestamp,
-      eventType: 'behavior_${event.behaviorType}',
-      severity: event.severity,
-      additionalData: {
-        'message': event.message,
-        'details': event.details,
-      },
-    );
-    
-    // Forward to unified event stream
-    _drivingEventController.add(drivingEvent);
+    try {
+      // Convert behavior event to driving event
+      final drivingEvent = DrivingEvent(
+        id: _uuid.v4(),
+        tripId: _tripService.currentTrip?.id ?? 'no_trip',
+        timestamp: event.timestamp,
+        eventType: event.behaviorType,
+        severity: event.severity,
+        additionalData: event.details,
+      );
+      
+      // Forward the event to other services
+      if (_tripService.currentTrip != null) {
+        _tripService.recordDrivingEvent(drivingEvent);
+      }
+      
+      // Forward event to the public event stream
+      _drivingEventController.add(drivingEvent);
+      
+      // Send notification for significant events
+      if (['harsh_acceleration', 'harsh_braking', 'excessive_speed', 'excessive_idling']
+          .contains(event.behaviorType)) {
+        _notificationService.showDrivingEventNotification(drivingEvent);
+      }
+    } catch (e) {
+      _logger.warning('Error handling driving behavior event: $e');
+    }
   }
   
   /// Handles achievement events
-  void _handleAchievementEvent(dynamic event) {
+  void _handleAchievementEvent(AchievementEvent event) {
     try {
-      // Pass through any achievement events to the driving event stream
-      _drivingEventController.add(DrivingEvent(
+      // Create a driving event for the achievement
+      final achievementEvent = DrivingEvent(
         id: _uuid.v4(),
-        tripId: _tripService.currentTrip?.id ?? 'none',
+        tripId: _tripService.currentTrip?.id ?? 'no_trip',
         timestamp: DateTime.now(),
         eventType: 'achievement_earned',
         severity: 0.0, // Not a negative event
-        additionalData: {
-          'achievementType': event.badgeType,
-          'achievementName': event.badgeName,
-          'level': event.level,
-          'isUpgrade': event.isUpgrade,
-        },
-      ));
+        additionalData: event.toJson(),
+      );
       
-      _logger.info('Achievement earned: ${event.badgeName} level ${event.level}');
+      // Forward to event stream
+      _drivingEventController.add(achievementEvent);
+      
+      // Send notification for the achievement
+      _notificationService.showAchievementNotification(
+        title: 'Achievement Unlocked!',
+        message: 'You earned the ${event.badgeName} badge',
+        badgeType: event.badgeType,
+        level: event.level,
+      );
     } catch (e) {
       _logger.warning('Error handling achievement event: $e');
     }
   }
   
   /// Handles challenge events
-  void _handleChallengeEvent(dynamic event) {
+  void _handleChallengeEvent(ChallengeEvent event) {
     try {
-      // Pass through any challenge events to the driving event stream
-      _drivingEventController.add(DrivingEvent(
+      // Create a driving event for the challenge
+      final challengeEvent = DrivingEvent(
         id: _uuid.v4(),
-        tripId: _tripService.currentTrip?.id ?? 'none',
+        tripId: _tripService.currentTrip?.id ?? 'no_trip',
         timestamp: DateTime.now(),
-        eventType: 'challenge_${event.eventType}',
+        eventType: 'challenge_update',
         severity: 0.0, // Not a negative event
-        additionalData: {
-          'challengeId': event.challengeId,
-          'challengeTitle': event.challengeTitle,
-          'progress': event.progress,
-          'targetValue': event.targetValue,
-          'isCompleted': event.isCompleted,
-        },
-      ));
+        additionalData: event.toJson(),
+      );
       
-      _logger.info('Challenge update: ${event.challengeTitle} - ${event.eventType}');
+      // Forward to event stream
+      _drivingEventController.add(challengeEvent);
+      
+      // Send notification for completed challenges
+      if (event.eventType == 'completed') {
+        _notificationService.showNotification(
+          title: 'Challenge Completed!',
+          body: 'You completed the ${event.challengeTitle} challenge',
+          type: NotificationType.achievement,
+          priority: NotificationPriority.high,
+          data: {'challengeId': event.challengeId},
+        );
+      }
     } catch (e) {
       _logger.warning('Error handling challenge event: $e');
     }
@@ -463,65 +493,45 @@ class DrivingService extends ChangeNotifier {
   
   /// Ends the current trip recording
   Future<Trip?> endTrip() async {
-    _logger.info('Ending current trip');
+    _logger.info('Ending trip');
     
-    if (_drivingStatus != DrivingStatus.recording) {
-      _logger.warning('Cannot end trip, not currently recording');
+    if (_tripService.currentTrip == null) {
+      _logger.warning('Cannot end trip: No trip in progress');
       return null;
     }
     
     try {
-      // Stop analytics
-      _analyticsService.stopAnalysis();
+      // Stop data collection
+      await _dataCollectionService.stopCollection();
       
-      // End the trip
-      final trip = await _tripService.endTrip();
+      // Finish trip and get completed trip
+      final completedTrip = await _tripService.endTrip();
       
-      if (trip != null) {
-        // Send trip ended event
-        _drivingEventController.add(DrivingEvent(
-          id: _uuid.v4(),
-          tripId: trip.id,
-          timestamp: DateTime.now(),
-          eventType: 'trip_ended',
-          severity: 0.0, // Not a negative event
-          additionalData: {
-            'tripId': trip.id,
-            'distanceKm': trip.distanceKm,
-            'duration': trip.endTime != null 
-                ? trip.endTime!.difference(trip.startTime).inMinutes 
-                : 0,
-            'score': currentEcoScore,
-          },
-        ));
+      if (completedTrip != null) {
+        _logger.info('Trip ended successfully: ${completedTrip.id}');
         
-        // Check for achievements
-        final userId = trip.userId;
-        if (userId != null && userId.isNotEmpty) {
-          _achievementService.checkAchievementsAfterTrip(trip, userId);
-          _challengeService.checkChallengesAfterTrip(trip, userId);
+        // Check for achievements after trip
+        if (completedTrip.userId != null) {
+          await _achievementService.checkAchievementsAfterTrip(completedTrip, completedTrip.userId!);
+          await _challengeService.checkChallengesAfterTrip(completedTrip, completedTrip.userId!);
         }
         
+        // Send trip summary notification
+        _notificationService.showTripSummaryNotification(
+          tripId: completedTrip.id,
+          ecoScore: 85, // Use a placeholder or calculate from analytics service
+          distanceKm: completedTrip.distanceKm ?? 0,
+          fuelSavedL: completedTrip.fuelUsedL ?? 0,
+        );
+        
+        // Update driving status
         _updateDrivingStatus();
+        
+        return completedTrip;
+      } else {
+        _logger.warning('Failed to end trip');
+        return null;
       }
-      
-      // Optionally stop data collection (could keep collecting for next trip)
-      // await _dataCollectionService.stopCollection();
-      
-      // Stop background service if no immediate next trip expected
-      if (_backgroundService != null && _backgroundService!.isRunning) {
-        // We could check preferences here to see if we should keep
-        // the service running or not depending on user settings
-        final shouldStopBackgroundService = trip?.distanceKm != null && 
-            trip!.distanceKm! > 1.0; // Only stop if it was a real trip
-            
-        if (shouldStopBackgroundService) {
-          _logger.info('Stopping background service');
-          await _backgroundService!.stopBackgroundService();
-        }
-      }
-      
-      return trip;
     } catch (e) {
       _setError('Error ending trip: $e');
       _logger.severe('Error ending trip', e);
