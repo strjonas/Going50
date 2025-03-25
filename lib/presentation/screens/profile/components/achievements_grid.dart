@@ -232,17 +232,26 @@ class _AchievementsGridState extends State<AchievementsGrid> with TickerProvider
         .where((b) => !earnedTypes.contains(b['badgeType']))
         .toList();
     
-    // Get progress for unearned badges
+    // Create a list for all unearned badges - regardless of progress
+    final allUnearnedBadges = <Map<String, dynamic>>[];
+    
+    // Process all unearned badge types
     for (final badgeType in unearnedTypes) {
       final type = badgeType['badgeType'] as String;
       final progress = await _achievementService.getBadgeProgress(userId, type);
       
+      final badgeWithProgress = {
+        ...badgeType,
+        'progress': progress ?? 0.0,
+        'earned': false,
+      };
+      
+      // Add to all unearned badges
+      allUnearnedBadges.add(badgeWithProgress);
+      
+      // Also add to progress badges if it has progress
       if (progress != null && progress > 0) {
-        progressBadges.add({
-          ...badgeType,
-          'progress': progress,
-          'earned': false,
-        });
+        progressBadges.add(badgeWithProgress);
       }
     }
     
@@ -251,21 +260,52 @@ class _AchievementsGridState extends State<AchievementsGrid> with TickerProvider
       (b['progress'] as double).compareTo(a['progress'] as double)
     );
     
-    // First add earned badges (capped at 5 to leave room for at least one in-progress)
-    result.addAll(earnedBadges.take(5));
+    // Sort all unearned badges by progress (highest first)
+    allUnearnedBadges.sort((a, b) => 
+      (b['progress'] as double).compareTo(a['progress'] as double)
+    );
     
-    // Always add at least one in-progress badge if available
+    // Add earned badges first (capped at 3 to ensure at least 3 unearned ones if possible)
+    result.addAll(earnedBadges.take(3));
+    
+    // Add unearned badges with progress first
     if (progressBadges.isNotEmpty) {
-      // Add the highest progress badge
-      result.add(progressBadges.first);
+      // How many spaces we have left in our 6-item grid
+      final spacesLeft = 6 - result.length;
+      // Add as many progress badges as we can fit
+      result.addAll(progressBadges.take(spacesLeft));
+    }
+    
+    // If we still have space and not enough badges yet, add more unearned badges
+    if (result.length < 6) {
+      // Add unearned badges that weren't already added (including those without progress)
+      final alreadyAddedTypes = result.map((b) => b['badgeType'] as String).toSet();
+      final remainingUnearned = allUnearnedBadges
+          .where((b) => !alreadyAddedTypes.contains(b['badgeType']))
+          .toList();
       
-      // If we have space, add more badges
-      if (result.length < 6 && progressBadges.length > 1) {
-        result.addAll(progressBadges.skip(1).take(6 - result.length));
+      result.addAll(remainingUnearned.take(6 - result.length));
+    }
+    
+    // If we still have space and not enough badges yet, add more earned badges
+    if (result.length < 6 && earnedBadges.length > 3) {
+      final alreadyAddedEarnedTypes = result
+          .where((b) => b.containsKey('earnedDate') || b['earned'] == true)
+          .map((b) => b['badgeType'] as String)
+          .toSet();
+      
+      final remainingEarned = earnedBadges
+          .where((b) => !alreadyAddedEarnedTypes.contains(b['badgeType']))
+          .toList();
+      
+      result.addAll(remainingEarned.take(6 - result.length));
+    }
+    
+    // If we have fewer than 6 badges total (earned + unearned), just fill the grid with what we have
+    if (result.length < 6 && result.length < (earnedBadges.length + allUnearnedBadges.length)) {
+      if (kDebugMode) {
+        print('AchievementsGrid: Unable to fill grid with 6 badges. Only ${result.length} available.');
       }
-    } else if (result.length < 6) {
-      // If no in-progress badges, add more earned badges to fill space
-      result.addAll(earnedBadges.skip(5).take(6 - result.length));
     }
     
     return result;
@@ -363,7 +403,8 @@ class _AchievementsGridState extends State<AchievementsGrid> with TickerProvider
 
   /// Build a badge item
   Widget _buildBadgeItem(BuildContext context, Map<String, dynamic> badge) {
-    final bool isEarned = badge.containsKey('earnedDate') || (badge['earned'] == true);
+    final bool isEarned = badge.containsKey('earnedDate') || (badge['earned'] == true) || 
+        ((badge['progress'] as double?) ?? 0) >= 1.0; // Also check for 100% progress
     final double? progress = badge['progress'] as double?;
     final String badgeType = badge['badgeType'] as String;
     final int level = badge['level'] as int? ?? 1;

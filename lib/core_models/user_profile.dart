@@ -13,6 +13,10 @@ class UserProfile {
   final bool allowDataUpload;
   final Map<String, dynamic>? preferences;
   
+  // Firebase-related fields
+  final String? firebaseId;  // Firebase User UID
+  final String? email;       // User email address
+  
   /// Constructor
   UserProfile({
     required this.id,
@@ -22,6 +26,8 @@ class UserProfile {
     required this.isPublic,
     required this.allowDataUpload,
     this.preferences,
+    this.firebaseId,
+    this.email,
   }) : lastUpdatedAt = lastUpdatedAt ?? createdAt;
   
   /// Convert to JSON
@@ -34,6 +40,8 @@ class UserProfile {
       'isPublic': isPublic,
       'allowDataUpload': allowDataUpload,
       'preferencesJson': preferences != null ? jsonEncode(preferences) : null,
+      'firebaseId': firebaseId,
+      'email': email,
     };
   }
   
@@ -61,6 +69,8 @@ class UserProfile {
       isPublic: json['isPublic'] ?? false,
       allowDataUpload: json['allowDataUpload'] ?? false,
       preferences: prefsMap,
+      firebaseId: json['firebaseId'],
+      email: json['email'],
     );
   }
   
@@ -73,6 +83,8 @@ class UserProfile {
     bool? isPublic,
     bool? allowDataUpload,
     Map<String, dynamic>? preferences,
+    String? firebaseId,
+    String? email,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -82,6 +94,8 @@ class UserProfile {
       isPublic: isPublic ?? this.isPublic,
       allowDataUpload: allowDataUpload ?? this.allowDataUpload,
       preferences: preferences ?? this.preferences,
+      firebaseId: firebaseId ?? this.firebaseId,
+      email: email ?? this.email,
     );
   }
 } 

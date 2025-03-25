@@ -1095,13 +1095,28 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
     // Add "Browse All Challenges" button
     challengeWidgets.add(
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 8.0),
         child: InkWell(
           onTap: () {
             // Navigate to full challenges view
-            Navigator.of(context).pushNamed(
-              CommunityRoutes.challenges,
-            );
+            Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => Scaffold(
+                          appBar: AppBar(
+                            title: const Text('Leaderboard'),
+                            elevation: 0,
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            centerTitle: false,
+                          ),
+                          body: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8.0),
+                            child: ChallengesView(),
+                          ),
+                        ),
+                      ),
+                    );
           },
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 14.0),

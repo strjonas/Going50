@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:logging/logging.dart';
 import 'package:going50/core_models/user_profile.dart';
+import 'package:uuid/uuid.dart';
 
 // Models
 import 'package:going50/core_models/trip.dart';
@@ -77,6 +78,8 @@ class UserProfilesTable extends Table {
   BoolColumn get isPublic => boolean().withDefault(const Constant(false))();
   BoolColumn get allowDataUpload => boolean().withDefault(const Constant(false))();
   TextColumn get preferencesJson => text().nullable()(); // User preferences as JSON
+  TextColumn get firebaseId => text().nullable()(); // Firebase Auth UID
+  TextColumn get email => text().nullable()(); // User email from Firebase Auth
   
   @override
   Set<Column> get primaryKey => {id};
@@ -338,7 +341,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2; // Incremented for the new tables
+  int get schemaVersion => 3; // Incremented for Firebase fields
   
   @override
   MigrationStrategy get migration {
@@ -365,6 +368,12 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(leaderboardEntriesTable);
           await m.createTable(externalIntegrationsTable);
           await m.createTable(syncStatusTable);
+        }
+        
+        if (from < 3) {
+          // Add Firebase fields to UserProfilesTable
+          await m.addColumn(userProfilesTable, userProfilesTable.firebaseId as GeneratedColumn<Object>);
+          await m.addColumn(userProfilesTable, userProfilesTable.email as GeneratedColumn<Object>);
         }
       },
       beforeOpen: (details) async {
@@ -1220,6 +1229,117 @@ class AppDatabase extends _$AppDatabase {
       ..where((t) => t.userId.equals(userId));
     
     return await query.go();
+  }
+  
+  /// Retrieves a user profile by their Firebase ID
+  Future<UserProfile?> getUserProfileByFirebaseId(String firebaseId) async {
+    _logger.info('Querying user profile by Firebase ID: $firebaseId');
+    try {
+      final query = select(userProfilesTable)
+        ..where((t) => t.firebaseId.equals(firebaseId));
+      final result = await query.getSingleOrNull();
+      
+      if (result != null) {
+        _logger.info('Found user profile for Firebase ID: $firebaseId');
+        
+        // Create user profile from result
+        return UserProfile(
+          id: result.id,
+          name: result.name ?? 'Anonymous',
+          createdAt: result.createdAt,
+          lastUpdatedAt: result.lastUpdatedAt,
+          isPublic: result.isPublic,
+          allowDataUpload: result.allowDataUpload,
+          preferences: result.preferencesJson != null ? 
+              jsonDecode(result.preferencesJson!) as Map<String, dynamic> : null,
+          firebaseId: result.firebaseId,
+          email: result.email,
+        );
+      } else {
+        _logger.info('No user profile found for Firebase ID: $firebaseId');
+        return null;
+      }
+    } catch (e) {
+      _logger.severe('Error retrieving user profile by Firebase ID: $e');
+      return null;
+    }
+  }
+
+  /// Updates an existing user profile
+  Future<bool> updateUserProfile(UserProfile profile) async {
+    _logger.info('Updating user profile with ID: ${profile.id}');
+    try {
+      // Update user profile in a transaction
+      await transaction(() async {
+        // Update main profile data
+        await (update(userProfilesTable)..where((t) => t.id.equals(profile.id))).write(
+          UserProfilesTableCompanion(
+            name: Value(profile.name),
+            lastUpdatedAt: Value(DateTime.now()),
+            isPublic: Value(profile.isPublic),
+            allowDataUpload: Value(profile.allowDataUpload),
+            preferencesJson: profile.preferences != null ? 
+                Value(jsonEncode(profile.preferences)) : const Value.absent(),
+            firebaseId: profile.firebaseId != null ? 
+                Value(profile.firebaseId!) : const Value.absent(),
+            email: profile.email != null ? 
+                Value(profile.email!) : const Value.absent(),
+          ),
+        );
+      });
+      return true;
+    } catch (e) {
+      _logger.severe('Error updating user profile: $e');
+      return false;
+    }
+  }
+
+  /// Inserts a new user profile
+  Future<UserProfile?> insertUserProfile({
+    required String name,
+    required bool isPublic,
+    required bool allowDataUpload,
+    required String firebaseId,
+    required String email,
+    Map<String, dynamic>? preferences,
+  }) async {
+    _logger.info('Inserting new user profile with Firebase ID: $firebaseId');
+    final userId = const Uuid().v4();
+    final now = DateTime.now();
+    
+    try {
+      // Insert the user profile
+      await into(userProfilesTable).insert(
+        UserProfilesTableCompanion.insert(
+          id: userId,
+          name: Value(name),
+          createdAt: now,
+          lastUpdatedAt: now,
+          isPublic: Value(isPublic),
+          allowDataUpload: Value(allowDataUpload),
+          preferencesJson: preferences != null ? 
+              Value(jsonEncode(preferences)) : const Value.absent(),
+          firebaseId: Value(firebaseId),
+          email: Value(email),
+        ),
+      );
+
+      // Return the created user profile
+      return UserProfile(
+        id: userId,
+        name: name,
+        createdAt: now,
+        lastUpdatedAt: now,
+        isPublic: isPublic,
+        allowDataUpload: allowDataUpload,
+        preferences: preferences,
+        firebaseId: firebaseId,
+        email: email,
+      );
+    } catch (e) {
+      _logger.severe('Error inserting user profile: $e');
+      return null;
+    }
   }
   
   /// Close the database connection

@@ -1055,6 +1055,7 @@ class DataStorageManager {
       
       // Filter trips for this user
       final userTrips = trips.where((trip) => 
+        trip.userId == userId && 
         trip.isCompleted == true).toList();
       
       // Calculate metrics
@@ -1075,21 +1076,70 @@ class DataStorageManager {
       // Calculate CO2 reduction (2.31 kg CO2 per liter of fuel)
       final co2Reduced = fuelSaved * 2.31;
       
-      // Get consecutive good days (simplified)
-      int consecutiveDaysWithGoodScore = 0;
+      // Calculate best driving streak (consecutive days with at least one trip)
+      int bestDrivingStreak = _calculateBestDrivingStreak(userTrips);
       
       // Return all metrics
       return {
         'tripCount': tripCount,
         'fuelSaved': fuelSaved,
         'co2Reduced': co2Reduced,
-        'consecutiveDaysWithGoodScore': consecutiveDaysWithGoodScore,
-        // Add more metrics as needed
+        'bestDrivingStreak': bestDrivingStreak,
       };
     } catch (e) {
       _logger.severe('Error getting user metrics: $e');
       return null;
     }
+  }
+  
+  /// Calculate the best driving streak (consecutive days with completed trips)
+  int _calculateBestDrivingStreak(List<Trip> trips) {
+    if (trips.isEmpty) return 0;
+    
+    // Sort trips by start time
+    trips.sort((a, b) => a.startTime.compareTo(b.startTime));
+    
+    // Group trips by day
+    final Map<String, List<Trip>> tripsByDay = {};
+    for (final trip in trips) {
+      final dateString = _formatDateKey(trip.startTime);
+      tripsByDay[dateString] = [...(tripsByDay[dateString] ?? []), trip];
+    }
+    
+    // Convert to a sorted list of dates
+    final tripDates = tripsByDay.keys.toList()..sort();
+    if (tripDates.isEmpty) return 0;
+    
+    // Calculate streaks
+    int currentStreak = 1;
+    int bestStreak = 1;
+    
+    for (int i = 1; i < tripDates.length; i++) {
+      final previousDate = DateTime.parse(tripDates[i-1]);
+      final currentDate = DateTime.parse(tripDates[i]);
+      
+      // Check if dates are consecutive
+      final difference = currentDate.difference(previousDate).inDays;
+      
+      if (difference == 1) {
+        // Consecutive day, increment streak
+        currentStreak++;
+        // Update best streak if current is better
+        if (currentStreak > bestStreak) {
+          bestStreak = currentStreak;
+        }
+      } else {
+        // Streak broken, reset counter
+        currentStreak = 1;
+      }
+    }
+    
+    return bestStreak;
+  }
+  
+  /// Format a DateTime to a consistent string key for grouping by day
+  String _formatDateKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
   
   /// Save a badge for a user
@@ -1412,6 +1462,147 @@ class DataStorageManager {
     } catch (e) {
       // Log but don't rethrow to allow other tables to be processed
       _logger.warning('Error deleting $tableName: $e');
+    }
+  }
+  
+  /// Get user profile by Firebase ID
+  Future<UserProfile?> getUserProfileByFirebaseId(String firebaseId) async {
+    try {
+      await initialize();
+      
+      // Get profile from database
+      final userProfile = await _database.getUserProfileByFirebaseId(firebaseId);
+      
+      if (userProfile != null) {
+        _logger.info('Found user profile by Firebase ID: $firebaseId');
+      } else {
+        _logger.info('No user profile found for Firebase ID: $firebaseId');
+      }
+      
+      return userProfile;
+    } catch (e) {
+      _logger.severe('Error getting user profile by Firebase ID: $e');
+      return null;
+    }
+  }
+  
+  /// Update an existing user profile with a Firebase ID
+  Future<UserProfile?> updateUserProfileFirebaseId(String userId, String firebaseId) async {
+    try {
+      await initialize();
+      
+      // Get existing profile
+      final existingProfile = await _database.getUserProfileById(userId);
+      
+      if (existingProfile == null) {
+        _logger.warning('Cannot update Firebase ID: User profile not found for ID: $userId');
+        return null;
+      }
+      
+      // Create updated profile
+      final updatedProfile = existingProfile.copyWith(
+        firebaseId: firebaseId,
+        lastUpdatedAt: DateTime.now(),
+      );
+      
+      // Save to database
+      await _database.updateUserProfile(updatedProfile);
+      
+      _logger.info('Updated Firebase ID for user: $userId');
+      return updatedProfile;
+    } catch (e) {
+      _logger.severe('Error updating Firebase ID for user profile: $e');
+      return null;
+    }
+  }
+  
+  /// Update user profile with extended information
+  Future<UserProfile?> updateUserProfile(
+    String userId, 
+    String name, {
+    bool? isPublic,
+    bool? allowDataUpload, 
+    String? email,
+    String? firebaseId,
+  }) async {
+    try {
+      await initialize();
+      
+      // Get existing profile
+      final existingProfile = await _database.getUserProfileById(userId);
+      
+      if (existingProfile == null) {
+        _logger.warning('Cannot update profile: User profile not found for ID: $userId');
+        return null;
+      }
+      
+      // Create updated profile
+      final updatedProfile = existingProfile.copyWith(
+        name: name,
+        isPublic: isPublic,
+        allowDataUpload: allowDataUpload,
+        email: email,
+        firebaseId: firebaseId,
+        lastUpdatedAt: DateTime.now(),
+      );
+      
+      // Save to database
+      await _database.updateUserProfile(updatedProfile);
+      
+      _logger.info('Updated profile for user: $userId');
+      return updatedProfile;
+    } catch (e) {
+      _logger.severe('Error updating user profile: $e');
+      return null;
+    }
+  }
+  
+  /// Save a new user profile with extended information including Firebase details
+  Future<UserProfile?> saveUserProfileWithFirebase(
+    String userId, 
+    String name, 
+    bool isPublic, 
+    bool allowDataUpload, {
+    String? email,
+    String? firebaseId,
+  }) async {
+    try {
+      await initialize();
+      
+      if (firebaseId != null && email != null) {
+        // Use the insertUserProfile method if we have Firebase auth details
+        return await _database.insertUserProfile(
+          name: name,
+          isPublic: isPublic,
+          allowDataUpload: allowDataUpload,
+          firebaseId: firebaseId,
+          email: email,
+        );
+      } else {
+        // For non-Firebase users, use the older method
+        final now = DateTime.now();
+        
+        // Create the profile
+        final userProfile = UserProfile(
+          id: userId,
+          name: name,
+          createdAt: now,
+          lastUpdatedAt: now,
+          isPublic: isPublic,
+          allowDataUpload: allowDataUpload,
+          email: email,
+          firebaseId: firebaseId,
+        );
+        
+        // Save to database using existing method for backward compatibility
+        await _database.saveUserProfile(userId, name, isPublic, allowDataUpload);
+        
+        _logger.info('Created new user profile with ID: $userId');
+        return userProfile;
+      }
+    } catch (e) {
+      _logger.severe('Error saving user profile: $e');
+      return null;
     }
   }
 } 

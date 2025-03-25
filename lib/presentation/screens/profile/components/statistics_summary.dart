@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:going50/presentation/providers/insights_provider.dart';
+import 'package:going50/services/driving/trip_service.dart';
+import 'package:going50/services/service_locator.dart';
+import 'package:going50/services/user/user_service.dart';
 
 /// StatisticsSummary displays key user statistics and personal records
 class StatisticsSummary extends StatelessWidget {
@@ -76,20 +79,38 @@ class StatisticsSummary extends StatelessWidget {
             _buildStatisticItem(
               context,
               Icons.star,
-              (insightsProvider.currentMetrics?.overallEcoScore ?? 0).toString(),
+              (currentMetrics?.overallEcoScore ?? 0).toString(),
               'Best Eco-Score'
             ),
-            _buildStatisticItem(
-              context,
-              Icons.social_distance,
-              '${_getLongestTrip(insightsProvider).toStringAsFixed(1)} km',
-              'Longest Trip'
+            FutureBuilder<double>(
+              future: _getLongestTrip(),
+              builder: (context, snapshot) {
+                final longestTripDistance = snapshot.hasData 
+                    ? snapshot.data!
+                    : 0.0;
+                
+                return _buildStatisticItem(
+                  context,
+                  Icons.social_distance,
+                  '${longestTripDistance.toStringAsFixed(1)} km',
+                  'Longest Trip'
+                );
+              },
             ),
-            _buildStatisticItem(
-              context,
-              Icons.speed,
-              _getBestDrivingStreak(insightsProvider),
-              'Best Streak'
+            FutureBuilder<String>(
+              future: _getBestDrivingStreak(),
+              builder: (context, snapshot) {
+                final streakText = snapshot.hasData 
+                    ? snapshot.data!
+                    : '0 days';
+                
+                return _buildStatisticItem(
+                  context,
+                  Icons.speed,
+                  streakText,
+                  'Best Streak'
+                );
+              },
             ),
           ],
         ),
@@ -163,17 +184,64 @@ class StatisticsSummary extends StatelessWidget {
     }
   }
   
-  /// Gets the longest trip distance (mock implementation)
-  double _getLongestTrip(InsightsProvider provider) {
-    // In a real implementation, this would query the trips data
-    // For now, return a mock value
-    return provider.currentMetrics?.totalDistanceKm ?? 0 * 0.25;
+  /// Gets the longest trip distance based on actual trip data
+  Future<double> _getLongestTrip() async {
+    // Get the trip service from the service locator
+    final tripService = serviceLocator<TripService>();
+    final userService = serviceLocator<UserService>();
+    
+    try {
+      // Get the current user ID
+      final userId = userService.currentUser?.id;
+      if (userId == null) return 0.0;
+      
+      // Get all trips from the service
+      final trips = await tripService.getTripHistory();
+      
+      // Filter for the current user's completed trips
+      final userTrips = trips.where((trip) => 
+        trip.userId == userId && 
+        trip.isCompleted == true &&
+        trip.distanceKm != null).toList();
+      
+      if (userTrips.isEmpty) return 0.0;
+      
+      // Find the trip with the maximum distance
+      double maxDistance = 0.0;
+      for (final trip in userTrips) {
+        if (trip.distanceKm != null && trip.distanceKm! > maxDistance) {
+          maxDistance = trip.distanceKm!;
+        }
+      }
+      
+      return maxDistance;
+    } catch (e) {
+      // Return 0 on error
+      return 0.0;
+    }
   }
   
-  /// Gets the best driving streak (mock implementation)
-  String _getBestDrivingStreak(InsightsProvider provider) {
-    // In a real implementation, this would query streak data
-    // For now, return a mock value
-    return '${(provider.currentMetrics?.totalTrips ?? 0) ~/ 3} days';
+  /// Gets the best driving streak based on streak data
+  Future<String> _getBestDrivingStreak() async {
+    // Get user service from the service locator
+    final userService = serviceLocator<UserService>();
+    
+    try {
+      // Get the current user
+      final userId = userService.currentUser?.id;
+      if (userId == null) return '0 days';
+      
+      // Get user metrics which should include best streak
+      final userMetrics = await userService.getUserMetrics(userId);
+      
+      // Get best streak count (or 0 if not available)
+      final bestStreakCount = userMetrics?['bestDrivingStreak'] as int? ?? 0;
+      
+      // Format the streak count
+      return '$bestStreakCount days';
+    } catch (e) {
+      // Return 0 on error
+      return '0 days';
+    }
   }
 } 

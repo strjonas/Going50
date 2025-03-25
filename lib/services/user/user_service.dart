@@ -27,6 +27,7 @@ class UserService {
   // Constants
   static const _userIdKey = 'user_id';
   static const _isAnonymousKey = 'is_anonymous';
+  static const _firebaseUserIdKey = 'firebase_user_id';
   
   /// Constructor
   UserService(this._dataStorageManager);
@@ -51,8 +52,25 @@ class UserService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString(_userIdKey);
+      final firebaseUserId = prefs.getString(_firebaseUserIdKey);
       
-      // Check if we have a user ID
+      // If we have a Firebase user ID, prioritize loading by that
+      if (firebaseUserId != null) {
+        _log.info('Found Firebase user ID, loading by Firebase ID: $firebaseUserId');
+        final firebaseUser = await _dataStorageManager.getUserProfileByFirebaseId(firebaseUserId);
+        
+        if (firebaseUser != null) {
+          _currentUser = firebaseUser;
+          _isAnonymous = false;
+          _userProfileStreamController.add(firebaseUser);
+          _log.info('Loaded Firebase user: ${firebaseUser.id}');
+          return firebaseUser;
+        } else {
+          _log.warning('Firebase user not found in database: $firebaseUserId');
+        }
+      }
+      
+      // Check if we have a local user ID
       if (userId == null) {
         _log.info('No user ID found, creating anonymous user');
         return await createAnonymousUser();
@@ -176,6 +194,8 @@ class UserService {
     required String name,
     required bool isPublic,
     required bool allowDataUpload,
+    String? email,
+    String? firebaseId,
   }) async {
     // Check if we already have a user
     if (_currentUser == null) {
@@ -193,27 +213,47 @@ class UserService {
       lastUpdatedAt: now,
       isPublic: isPublic,
       allowDataUpload: allowDataUpload,
+      email: email,
+      firebaseId: firebaseId,
     );
     
     // Save to database
-    await _dataStorageManager.saveUserProfile(
-      userId, 
-      name, 
-      isPublic, 
-      allowDataUpload
-    );
+    if (email != null || firebaseId != null) {
+      // If we have Firebase details, use the Firebase-specific method
+      await _dataStorageManager.saveUserProfileWithFirebase(
+        userId, 
+        name, 
+        isPublic, 
+        allowDataUpload,
+        email: email,
+        firebaseId: firebaseId,
+      );
+    } else {
+      // Otherwise use the standard method
+      await _dataStorageManager.saveUserProfile(
+        userId, 
+        name, 
+        isPublic, 
+        allowDataUpload
+      );
+    }
     
     // Update shared preferences
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_userIdKey, userId);
     await prefs.setBool(_isAnonymousKey, false);
     
+    // If we have a Firebase ID, also store it
+    if (firebaseId != null) {
+      await prefs.setString(_firebaseUserIdKey, firebaseId);
+    }
+    
     // Update state
     _currentUser = user;
     _isAnonymous = false;
     _userProfileStreamController.add(user);
     
-    _log.info('Registered user: $userId');
+    _log.info('Registered user: $userId${firebaseId != null ? ' with Firebase ID: $firebaseId' : ''}');
     return user;
   }
   
@@ -222,6 +262,8 @@ class UserService {
     String? name,
     bool? isPublic,
     bool? allowDataUpload,
+    String? email,
+    String? firebaseId,
   }) async {
     // Ensure we have a current user
     if (_currentUser == null) {
@@ -236,15 +278,27 @@ class UserService {
       isPublic: isPublic ?? _currentUser!.isPublic,
       allowDataUpload: allowDataUpload ?? _currentUser!.allowDataUpload,
       preferences: _currentUser!.preferences,
+      email: email ?? _currentUser!.email,
+      firebaseId: firebaseId ?? _currentUser!.firebaseId,
     );
     
-    // Save to database
-    await _dataStorageManager.saveUserProfile(
+    // Use updateUserProfile instead of saveUserProfile for existing users
+    await _dataStorageManager.updateUserProfile(
       user.id, 
-      user.name, 
-      user.isPublic, 
-      user.allowDataUpload
+      user.name,
+      isPublic: user.isPublic,
+      allowDataUpload: user.allowDataUpload,
+      email: user.email,
+      firebaseId: user.firebaseId,
     );
+    
+    // Update shared preferences
+    final prefs = await SharedPreferences.getInstance();
+    
+    // If we have a Firebase ID, also store it
+    if (firebaseId != null) {
+      await prefs.setString(_firebaseUserIdKey, firebaseId);
+    }
     
     // Update state
     _currentUser = user;
@@ -254,13 +308,96 @@ class UserService {
     return user;
   }
   
-  /// Get a user profile by ID
-  Future<UserProfile?> getUserProfile(String userId) async {
-    return await _dataStorageManager.getUserProfileById(userId);
+  /// Set current user
+  /// 
+  /// This is used by the AuthenticationService to set the current user
+  /// when a user signs in with Firebase.
+  Future<void> setCurrentUser(UserProfile userProfile) async {
+    try {
+      _log.info('Setting current user: ${userProfile.id}');
+      
+      // Update state
+      _currentUser = userProfile;
+      _isAnonymous = false;
+      
+      // Update shared preferences to reflect current user
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_userIdKey, userProfile.id);
+      await prefs.setBool(_isAnonymousKey, false);
+      
+      // If the user has a Firebase ID, store it
+      if (userProfile.firebaseId != null) {
+        await prefs.setString(_firebaseUserIdKey, userProfile.firebaseId!);
+      }
+      
+      // Notify listeners
+      _userProfileStreamController.add(userProfile);
+      
+      _log.info('Current user set: ${userProfile.id}');
+    } catch (e) {
+      _log.severe('Error setting current user: $e');
+      rethrow;
+    }
+  }
+  
+  /// Sign out the current user
+  ///
+  /// This doesn't delete the user or data, just resets to anonymous state
+  Future<void> signOut() async {
+    try {
+      _log.info('Signing out user');
+      
+      // Reset to anonymous
+      _isAnonymous = true;
+      
+      // Remove Firebase user ID if present
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_firebaseUserIdKey);
+      await prefs.setBool(_isAnonymousKey, true);
+      
+      // Keep the local user ID for data continuity
+      
+      // Notify listeners
+      _userProfileStreamController.add(_currentUser);
+      
+      _log.info('User signed out, reverted to anonymous');
+    } catch (e) {
+      _log.severe('Error signing out user: $e');
+      rethrow;
+    }
   }
   
   /// Dispose of resources
   void dispose() {
     _userProfileStreamController.close();
+  }
+  
+  /// Get user metrics for display in profile
+  /// 
+  /// This method fetches metrics like trip counts, streaks, and other user stats
+  /// from the DataStorageManager
+  Future<Map<String, dynamic>?> getUserMetrics(String userId) async {
+    try {
+      _log.info('Getting user metrics for user: $userId');
+      
+      // Get metrics from data storage manager
+      final metrics = await _dataStorageManager.getUserMetrics(userId);
+      
+      // If metrics don't have a "bestDrivingStreak" field, add a default value
+      if (metrics != null && !metrics.containsKey('bestDrivingStreak')) {
+        // Default to 0 streak if not found
+        metrics['bestDrivingStreak'] = 0;
+      }
+      
+      return metrics;
+    } catch (e) {
+      _log.severe('Error getting user metrics: $e');
+      return {
+        'tripCount': 0,
+        'fuelSaved': 0.0,
+        'co2Reduced': 0.0,
+        'bestDrivingStreak': 0,
+      };
+    }
   }
 } 

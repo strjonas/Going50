@@ -14,6 +14,7 @@ import 'package:going50/services/driving/performance_metrics_service.dart';
 import 'package:going50/services/user/user_service.dart';
 import 'package:going50/services/user/preferences_service.dart';
 import 'package:going50/services/user/privacy_service.dart';
+import 'package:going50/services/user/authentication_service.dart';
 import 'package:going50/services/gamification/achievement_service.dart';
 import 'package:going50/services/gamification/challenge_service.dart';
 import 'package:going50/services/permission_service.dart';
@@ -23,6 +24,11 @@ import 'package:going50/services/social/social_service.dart';
 import 'package:going50/services/social/leaderboard_service.dart';
 import 'package:going50/services/social/sharing_service.dart';
 import 'package:logging/logging.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 /// Global instance of the service locator
 final serviceLocator = GetIt.instance;
@@ -37,6 +43,9 @@ Future<void> setupServiceLocator() async {
   
   // Register services
   _registerServices();
+  
+  // Register Firebase services (if Firebase is initialized)
+  await _registerFirebaseServices();
   
   // Setup is complete
   debugPrint('Service locator initialized successfully');
@@ -93,6 +102,52 @@ void _registerExistingLibraries() {
   serviceLocator.registerLazySingleton<EcoDrivingManager>(
     () => EcoDrivingManager(),
   );
+}
+
+/// Register Firebase services
+Future<void> _registerFirebaseServices() async {
+  final log = Logger('ServiceLocator');
+  log.info('Attempting to register Firebase services');
+  
+  try {
+    // Check if Firebase is already initialized
+    if (Firebase.apps.isNotEmpty) {
+      log.info('Firebase is already initialized');
+      
+      // Register Firebase services
+      serviceLocator.registerLazySingleton<FirebaseAuth>(
+        () => FirebaseAuth.instance,
+      );
+      
+      serviceLocator.registerLazySingleton<FirebaseFirestore>(
+        () => FirebaseFirestore.instance,
+      );
+      
+      serviceLocator.registerLazySingleton<FirebaseStorage>(
+        () => FirebaseStorage.instance,
+      );
+      
+      serviceLocator.registerLazySingleton<FirebaseAnalytics>(
+        () => FirebaseAnalytics.instance,
+      );
+      
+      // Register AuthenticationService
+      serviceLocator.registerLazySingleton<AuthenticationService>(
+        () => AuthenticationService(
+          serviceLocator<FirebaseAuth>(),
+          serviceLocator<DataStorageManager>(),
+          serviceLocator<UserService>(),
+        ),
+      );
+      
+      log.info('Firebase services registered successfully');
+    } else {
+      log.info('Firebase is not initialized yet, skipping Firebase service registration');
+    }
+  } catch (e) {
+    log.warning('Error registering Firebase services: $e');
+    log.info('The app will continue to function with local storage only');
+  }
 }
 
 /// Register application services
