@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:going50/presentation/screens/profile/components/profile_header.dart';
 import 'package:going50/presentation/screens/profile/components/achievements_grid.dart';
 import 'package:going50/presentation/screens/profile/components/statistics_summary.dart';
+import 'package:going50/core/constants/route_constants.dart';
 
 /// ProfileScreen is the main screen for the Profile tab.
 ///
@@ -53,12 +54,7 @@ class ProfileScreen extends StatelessWidget {
                   'Settings',
                   Icons.settings,
                   () {
-                    // TODO: Implement settings navigation
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Settings not yet implemented'),
-                      ),
-                    );
+                    Navigator.of(context).pushNamed(ProfileRoutes.settings);
                   },
                 ),
               ),

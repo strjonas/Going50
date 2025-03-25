@@ -8,6 +8,7 @@ import '../presentation/screens/drive/active_drive_screen.dart';
 import '../presentation/screens/drive/trip_summary_screen.dart';
 import '../presentation/screens/insights/trip_history_screen.dart';
 import '../presentation/screens/insights/trip_detail_screen.dart';
+import '../presentation/screens/profile/settings_screen.dart';
 
 /// AppRouter handles route management for the application.
 /// 
@@ -67,9 +68,7 @@ class AppRouter {
       // Profile routes
       case ProfileRoutes.settings:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: Text('Settings Screen - To be implemented')),
-          ),
+          builder: (_) => const SettingsScreen(),
         );
         
       case ProfileRoutes.privacySettings:
