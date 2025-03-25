@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:going50/core/theme/app_colors.dart';
+import 'package:going50/core/constants/route_constants.dart';
 
 /// ChallengesView displays active and available challenges.
 ///
@@ -38,7 +39,7 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
         TabBar(
           controller: _tabController,
           labelColor: AppColors.primary,
-          unselectedLabelColor: Colors.grey,
+          unselectedLabelColor: Colors.grey.shade700,
           indicatorColor: AppColors.primary,
           tabs: const [
             Tab(text: 'Active'),
@@ -64,9 +65,9 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
     // Mock data - in a real app, this would come from a service or provider
     final List<Map<String, dynamic>> activeChallenges = [
       {
-        'id': 'challenge1',
-        'title': 'Eco Master',
-        'description': 'Maintain an eco-score above 80 for 5 consecutive trips',
+        'id': 'daily_eco_score_75',
+        'title': 'Green Commuter',
+        'description': 'Achieve at least 75 eco-score on a trip today',
         'iconName': 'eco',
         'progress': 3,
         'target': 5,
@@ -74,9 +75,9 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
         'participants': 243,
       },
       {
-        'id': 'challenge2',
-        'title': 'Fuel Saver',
-        'description': 'Save 5 liters of fuel through efficient driving',
+        'id': 'achievement_fuel_saved_20',
+        'title': 'Fuel Miser',
+        'description': 'Save 20 liters of fuel through eco-driving',
         'iconName': 'local_gas_station',
         'progress': 2.7,
         'target': 5,
@@ -84,10 +85,10 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
         'participants': 189,
       },
       {
-        'id': 'challenge3',
-        'title': 'Steady Driver',
-        'description': 'Complete 3 trips with consistent speed maintenance',
-        'iconName': 'speed',
+        'id': 'weekly_trips_5',
+        'title': 'Regular Driver',
+        'description': 'Complete 5 trips this week',
+        'iconName': 'repeat',
         'progress': 1,
         'target': 3,
         'timeRemaining': '2 days',
@@ -111,9 +112,9 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
     // Mock data - in a real app, this would come from a service or provider
     final List<Map<String, dynamic>> availableChallenges = [
       {
-        'id': 'challenge4',
-        'title': 'CO2 Reducer',
-        'description': 'Reduce CO2 emissions by 10kg this week',
+        'id': 'achievement_co2_reduced_50',
+        'title': 'Climate Guardian',
+        'description': 'Reduce CO2 emissions by 50kg',
         'iconName': 'cloud',
         'difficulty': 'Medium',
         'reward': '100 points',
@@ -121,20 +122,20 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
         'participants': 156,
       },
       {
-        'id': 'challenge5',
-        'title': 'Smooth Operator',
-        'description': 'Achieve top scores in smooth acceleration',
-        'iconName': 'trending_up',
+        'id': 'daily_calm_driving_80',
+        'title': 'Zen Driver',
+        'description': 'Maintain a calm driving score of 80+ today',
+        'iconName': 'mood',
         'difficulty': 'Hard',
         'reward': '200 points',
         'duration': '5 days',
         'participants': 85,
       },
       {
-        'id': 'challenge6',
-        'title': 'Urban Navigator',
-        'description': 'Complete 5 urban trips with 85+ eco-score',
-        'iconName': 'location_city',
+        'id': 'weekly_distance_100',
+        'title': 'Distance Champion',
+        'description': 'Drive 100km with eco-score above 80 this week',
+        'iconName': 'straighten',
         'difficulty': 'Easy',
         'reward': '75 points',
         'duration': '10 days',
@@ -158,18 +159,18 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
     // Mock data - in a real app, this would come from a service or provider
     final List<Map<String, dynamic>> completedChallenges = [
       {
-        'id': 'challenge7',
-        'title': 'Weekend Warrior',
-        'description': 'Complete 3 trips during the weekend',
-        'iconName': 'weekend',
+        'id': 'weekly_active_days_5',
+        'title': 'Consistent Driver',
+        'description': 'Drive on 5 different days this week',
+        'iconName': 'event_available',
         'completedDate': 'Apr 2, 2023',
         'reward': '50 points',
       },
       {
-        'id': 'challenge8',
-        'title': 'Early Bird',
-        'description': 'Complete a trip before 8:00 AM',
-        'iconName': 'access_time',
+        'id': 'daily_idle_reduction',
+        'title': 'Idle Buster',
+        'description': 'Keep idling time under 3 minutes for all trips today',
+        'iconName': 'timer',
         'completedDate': 'Mar 28, 2023',
         'reward': '25 points',
       },
@@ -196,111 +197,121 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: () {
+          // Navigate to challenge detail screen
+          Navigator.of(context).pushNamed(
+            CommunityRoutes.challengeDetail,
+            arguments: challenge['id'],
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      _getIconData(challenge['iconName']),
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
                   ),
-                  child: Icon(
-                    _getIconData(challenge['iconName']),
-                    color: AppColors.primary,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        challenge['title'],
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          challenge['title'],
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          challenge['description'],
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Progress: ${challenge['progress']}/${challenge['target']}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(
+                          value: progressPercent,
+                          backgroundColor: Colors.grey.shade200,
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                          minHeight: 8,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.timer, size: 16, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text(
+                            challenge['timeRemaining'],
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        challenge['description'],
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
+                      Row(
+                        children: [
+                          const Icon(Icons.people, size: 16, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${challenge['participants']} participants',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Progress: ${challenge['progress']}/${challenge['target']}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                        value: progressPercent,
-                        backgroundColor: Colors.grey.shade200,
-                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                        minHeight: 8,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.timer, size: 16, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(
-                          challenge['timeRemaining'],
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.people, size: 16, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${challenge['participants']} participants',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -313,92 +324,102 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    _getIconData(challenge['iconName']),
-                    color: Colors.grey.shade700,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        challenge['title'],
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        challenge['description'],
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _buildDetailChip(Icons.star, challenge['difficulty']),
-                const SizedBox(width: 8),
-                _buildDetailChip(Icons.card_giftcard, challenge['reward']),
-                const SizedBox(width: 8),
-                _buildDetailChip(Icons.timer, challenge['duration']),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${challenge['participants']} participants',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Joined ${challenge['title']} challenge'),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: () {
+          // Navigate to challenge detail screen
+          Navigator.of(context).pushNamed(
+            CommunityRoutes.challengeDetail,
+            arguments: challenge['id'],
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      _getIconData(challenge['iconName']),
+                      color: Colors.grey.shade700,
+                      size: 24,
                     ),
                   ),
-                  child: const Text('Join'),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          challenge['title'],
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          challenge['description'],
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  _buildDetailChip(Icons.star, challenge['difficulty']),
+                  const SizedBox(width: 8),
+                  _buildDetailChip(Icons.card_giftcard, challenge['reward']),
+                  const SizedBox(width: 8),
+                  _buildDetailChip(Icons.timer, challenge['duration']),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${challenge['participants']} participants',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Joined ${challenge['title']} challenge'),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    child: const Text('Join'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -411,79 +432,89 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: () {
+          // Navigate to challenge detail screen
+          Navigator.of(context).pushNamed(
+            CommunityRoutes.challengeDetail,
+            arguments: challenge['id'],
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _getIconData(challenge['iconName']),
+                  color: Colors.grey.shade700,
+                  size: 24,
+                ),
               ),
-              child: Icon(
-                _getIconData(challenge['iconName']),
-                color: Colors.grey.shade700,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    challenge['title'],
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    challenge['description'],
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color: AppColors.success,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      challenge['title'],
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Completed on ${challenge['completedDate']}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      challenge['description'],
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          size: 16,
+                          color: AppColors.success,
                         ),
-                      ),
-                      const Spacer(),
-                      Icon(
-                        Icons.card_giftcard,
-                        size: 16,
-                        color: AppColors.secondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        challenge['reward'],
-                        style: TextStyle(
-                          fontSize: 12,
+                        const SizedBox(width: 4),
+                        Text(
+                          'Completed on ${challenge['completedDate']}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(
+                          Icons.card_giftcard,
+                          size: 16,
                           color: AppColors.secondary,
-                          fontWeight: FontWeight.bold,
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        const SizedBox(width: 4),
+                        Text(
+                          challenge['reward'],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -536,6 +567,20 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
         return Icons.weekend;
       case 'access_time':
         return Icons.access_time;
+      case 'mood':
+        return Icons.mood;
+      case 'timer':
+        return Icons.timer;
+      case 'repeat':
+        return Icons.repeat;
+      case 'straighten':
+        return Icons.straighten;
+      case 'event_available':
+        return Icons.event_available;
+      case 'directions_car':
+        return Icons.directions_car;
+      case 'stars':
+        return Icons.stars;
       default:
         return Icons.emoji_events;
     }

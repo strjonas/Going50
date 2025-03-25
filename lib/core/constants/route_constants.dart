@@ -55,6 +55,9 @@ class CommunityRoutes {
   /// Route for the friend profile screen
   static const String friendProfile = '/community/friend-profile';
   
+  /// Route for the challenge detail screen
+  static const String challengeDetail = '/community/challenge-detail';
+  
   // Prevent instantiation
   CommunityRoutes._();
 }

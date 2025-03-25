@@ -9,6 +9,7 @@ import '../presentation/screens/drive/trip_summary_screen.dart';
 import '../presentation/screens/insights/trip_history_screen.dart';
 import '../presentation/screens/insights/trip_detail_screen.dart';
 import '../presentation/screens/profile/settings_screen.dart';
+import '../presentation/screens/community/challenge_detail_screen.dart';
 
 /// AppRouter handles route management for the application.
 /// 
@@ -56,6 +57,12 @@ class AppRouter {
           builder: (_) => const Scaffold(
             body: Center(child: Text('Challenges Screen - To be implemented')),
           ),
+        );
+        
+      case CommunityRoutes.challengeDetail:
+        final challengeId = settings.arguments as String;
+        return MaterialPageRoute(
+          builder: (_) => ChallengeDetailScreen(challengeId: challengeId),
         );
         
       case CommunityRoutes.friendProfile:

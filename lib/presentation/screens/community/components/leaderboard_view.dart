@@ -135,7 +135,7 @@ class LeaderboardView extends StatelessWidget {
           width: 1,
         ),
         labelStyle: TextStyle(
-          color: isSelected ? AppColors.primary : Colors.black,
+          color: isSelected ? AppColors.primary : Colors.grey.shade800,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),

@@ -381,36 +381,53 @@ class _FriendsViewState extends State<FriendsView> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.people_outline,
-                        size: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${result['mutualFriends']} mutual friends',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                  const SizedBox(height: 4),
+                  Flexible(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              size: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                '${result['mutualFriends']} mutual friends',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade700,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        Icons.eco_outlined,
-                        size: 12,
-                        color: AppColors.getEcoScoreColor(result['ecoScore'].toDouble()),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Eco Score: ${result['ecoScore']}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.eco_outlined,
+                              size: 12,
+                              color: AppColors.getEcoScoreColor(result['ecoScore'].toDouble()),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Eco Score: ${result['ecoScore']}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -611,36 +628,52 @@ class _FriendsViewState extends State<FriendsView> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.people_outline,
-                      size: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$mutualFriends mutual friends',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
+                Flexible(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.people_outline,
+                            size: 12,
+                            color: Colors.grey.shade700,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '$mutualFriends mutual friends',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade700,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.eco_outlined,
-                      size: 12,
-                      color: AppColors.getEcoScoreColor(ecoScore.toDouble()),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Eco Score: $ecoScore',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.eco_outlined,
+                            size: 12,
+                            color: AppColors.getEcoScoreColor(ecoScore.toDouble()),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Eco Score: $ecoScore',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
