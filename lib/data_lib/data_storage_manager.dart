@@ -737,4 +737,105 @@ class DataStorageManager {
       return false;
     }
   }
+  
+  /// Get metrics for a specific user that aren't covered by PerformanceMetrics
+  Future<Map<String, dynamic>?> getUserMetrics(String userId) async {
+    try {
+      // Ensure we're initialized
+      if (!_isInitialized) await initialize();
+      
+      // Query for metrics like trip count, fuel saved, CO2 reduced, etc.
+      final trips = await _database.getAllTrips();
+      
+      // Filter trips for this user
+      final userTrips = trips.where((trip) => 
+        trip.isCompleted == true).toList();
+      
+      // Calculate metrics
+      final tripCount = userTrips.length;
+      
+      // Calculate fuel saved (simplified calculation)
+      // Assumes 10% better fuel efficiency compared to average driving
+      double fuelSaved = 0.0;
+      for (final trip in userTrips) {
+        if (trip.fuelUsedL != null && trip.distanceKm != null) {
+          // Assuming average car uses 7.5L/100km
+          final averageFuelUsed = (trip.distanceKm! * 7.5) / 100;
+          final actualFuelUsed = trip.fuelUsedL!;
+          fuelSaved += (averageFuelUsed - actualFuelUsed).clamp(0, double.infinity);
+        }
+      }
+      
+      // Calculate CO2 reduction (2.31 kg CO2 per liter of fuel)
+      final co2Reduced = fuelSaved * 2.31;
+      
+      // Get consecutive good days (simplified)
+      int consecutiveDaysWithGoodScore = 0;
+      
+      // Return all metrics
+      return {
+        'tripCount': tripCount,
+        'fuelSaved': fuelSaved,
+        'co2Reduced': co2Reduced,
+        'consecutiveDaysWithGoodScore': consecutiveDaysWithGoodScore,
+        // Add more metrics as needed
+      };
+    } catch (e) {
+      _logger.severe('Error getting user metrics: $e');
+      return null;
+    }
+  }
+  
+  /// Save a badge for a user
+  Future<Map<String, dynamic>?> saveBadge(Map<String, dynamic> badge) async {
+    try {
+      // Ensure we're initialized
+      if (!_isInitialized) await initialize();
+      
+      // Extract values from the badge map
+      final userId = badge['userId'] as String;
+      final badgeType = badge['badgeType'] as String;
+      final earnedDate = badge['earnedDate'] as DateTime;
+      final level = badge['level'] as int;
+      final metadataJson = badge['metadataJson'] as String?;
+      
+      // Save to database
+      await _database.saveBadge(
+        userId,
+        badgeType,
+        earnedDate,
+        level,
+        metadataJson,
+      );
+      
+      // Return the saved badge
+      return badge;
+    } catch (e) {
+      _logger.severe('Error saving badge: $e');
+      return null;
+    }
+  }
+  
+  /// Get all badges for a user
+  Future<List<Map<String, dynamic>>> getUserBadges(String userId) async {
+    try {
+      // Ensure we're initialized
+      if (!_isInitialized) await initialize();
+      
+      // Get badges from database
+      final badges = await _database.getUserBadges(userId);
+      
+      // Convert to Maps
+      return badges.map((badge) => {
+        'userId': badge.userId,
+        'badgeType': badge.badgeType,
+        'earnedDate': badge.earnedDate,
+        'level': badge.level,
+        'metadataJson': badge.metadataJson,
+      }).toList();
+    } catch (e) {
+      _logger.severe('Error getting user badges: $e');
+      return [];
+    }
+  }
 } 

@@ -545,6 +545,58 @@ class AppDatabase extends _$AppDatabase {
     );
   }
   
+  // Badge-related methods
+  
+  /// Save a badge for a user
+  Future<void> saveBadge(
+    String userId, 
+    String badgeType, 
+    DateTime earnedDate, 
+    int level, 
+    String? metadataJson
+  ) async {
+    // Use a transaction to ensure data consistency
+    await transaction(() async {
+      // Check if the badge already exists
+      final existingBadge = await (select(badgesTable)
+        ..where((t) => t.userId.equals(userId) & t.badgeType.equals(badgeType)))
+        .getSingleOrNull();
+        
+      if (existingBadge != null) {
+        // Only update if the new level is higher
+        if (level > existingBadge.level) {
+          await (update(badgesTable)
+            ..where((t) => t.userId.equals(userId) & t.badgeType.equals(badgeType)))
+            .write(BadgesTableCompanion(
+              level: Value(level),
+              earnedDate: Value(earnedDate),
+              metadataJson: Value(metadataJson),
+            ));
+        }
+      } else {
+        // Insert new badge
+        await into(badgesTable).insert(
+          BadgesTableCompanion.insert(
+            userId: userId,
+            badgeType: badgeType,
+            earnedDate: earnedDate,
+            level: Value(level),
+            metadataJson: Value(metadataJson),
+          ),
+        );
+      }
+    });
+  }
+  
+  /// Get all badges for a user
+  Future<List<BadgesTableData>> getUserBadges(String userId) async {
+    final query = select(badgesTable)
+      ..where((t) => t.userId.equals(userId))
+      ..orderBy([(t) => OrderingTerm(expression: t.earnedDate, mode: OrderingMode.desc)]);
+    
+    return await query.get();
+  }
+  
   // Performance metrics methods
   Future<int> savePerformanceMetrics(DriverPerformanceMetrics metrics, String userId) async {
     return into(performanceMetricsTable).insert(

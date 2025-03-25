@@ -210,6 +210,45 @@ class PerformanceMetricsService {
     }
   }
   
+  /// Gets the latest performance metrics for a user
+  /// This is used for achievement verification
+  Future<Map<String, dynamic>?> getUserPerformanceMetrics(String userId) async {
+    _logger.info('Getting performance metrics for user $userId');
+    
+    try {
+      // Get the latest metrics for the user (last 90 days)
+      final endDate = DateTime.now();
+      final startDate = endDate.subtract(const Duration(days: 90));
+      
+      final metrics = await getMetricsForPeriod(startDate, endDate, userId: userId);
+      
+      // Convert to a map for easier use in achievement checking
+      final metricsMap = <String, dynamic>{
+        'overallScore': metrics.overallScore,
+        'calmDrivingScore': metrics.calmDrivingScore,
+        'efficientAccelerationScore': metrics.efficientAccelerationScore,
+        'efficientBrakingScore': metrics.efficientBrakingScore,
+        'idlingScore': metrics.idlingScore,
+        'speedOptimizationScore': metrics.speedOptimizationScore,
+        'steadySpeedScore': metrics.steadySpeedScore,
+        'totalTrips': metrics.totalTrips,
+        'totalDistanceKm': metrics.totalDistanceKm,
+        'totalDrivingTimeMinutes': metrics.totalDrivingTimeMinutes,
+      };
+      
+      // Get additional metrics from the database
+      final additionalMetrics = await _dataStorageManager.getUserMetrics(userId);
+      if (additionalMetrics != null) {
+        metricsMap.addAll(additionalMetrics);
+      }
+      
+      return metricsMap;
+    } catch (e) {
+      _logger.severe('Error getting user performance metrics: $e');
+      return null;
+    }
+  }
+  
   /// Calculates projected savings based on current performance metrics
   /// 
   /// [currentMetrics] is the current performance metrics

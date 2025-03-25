@@ -1,4 +1,3 @@
-
 // Trip model to track a single journey
 class Trip {
   final String id;
@@ -15,6 +14,7 @@ class Trip {
   final int? stopEvents;
   final double? averageRPM;
   final bool isCompleted;
+  final String? userId; // Add userId to track which user the trip belongs to
   
   Trip({
     required this.id,
@@ -31,6 +31,7 @@ class Trip {
     this.stopEvents,
     this.averageRPM,
     this.isCompleted = false,
+    this.userId, // Include in constructor
   });
 
   Map<String, dynamic> toJson() {
@@ -49,6 +50,7 @@ class Trip {
       'stopEvents': stopEvents,
       'averageRPM': averageRPM,
       'isCompleted': isCompleted,
+      'userId': userId, // Include in JSON
     };
   }
   
@@ -68,6 +70,7 @@ class Trip {
       stopEvents: json['stopEvents'],
       averageRPM: json['averageRPM'],
       isCompleted: json['isCompleted'] ?? false,
+      userId: json['userId'], // Parse from JSON
     );
   }
   
@@ -87,6 +90,7 @@ class Trip {
     int? stopEvents,
     double? averageRPM,
     bool? isCompleted,
+    String? userId, // Include in copyWith
   }) {
     return Trip(
       id: id ?? this.id,
@@ -103,6 +107,7 @@ class Trip {
       stopEvents: stopEvents ?? this.stopEvents,
       averageRPM: averageRPM ?? this.averageRPM,
       isCompleted: isCompleted ?? this.isCompleted,
+      userId: userId ?? this.userId, // Include in return
     );
   }
 }

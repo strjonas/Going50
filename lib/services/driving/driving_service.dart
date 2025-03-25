@@ -11,6 +11,7 @@ import 'package:going50/services/driving/analytics_service.dart';
 import 'package:going50/services/driving/trip_service.dart';
 import 'package:going50/services/permission_service.dart';
 import 'package:going50/services/service_locator.dart';
+import 'package:going50/services/gamification/achievement_service.dart';
 
 // Model imports
 import 'package:going50/core_models/trip.dart';
@@ -51,6 +52,7 @@ class DrivingService extends ChangeNotifier {
   final AnalyticsService _analyticsService;
   final TripService _tripService;
   late final PermissionService _permissionService;
+  late final AchievementService _achievementService;
   
   // Service state
   bool _isInitialized = false;
@@ -83,6 +85,7 @@ class DrivingService extends ChangeNotifier {
   ) {
     _logger.info('DrivingService created');
     _permissionService = serviceLocator<PermissionService>();
+    _achievementService = serviceLocator<AchievementService>();
     _setupEventListeners();
     _initializeServices();
   }
@@ -100,6 +103,9 @@ class DrivingService extends ChangeNotifier {
     
     // Listen for trip state changes
     _tripService.addListener(_updateDrivingStatus);
+    
+    // Listen for achievement events
+    _achievementService.achievementEventStream.listen(_handleAchievementEvent);
     
     // Subscribe to data stream to forward data to other services
     _dataCollectionService.dataStream.listen(_handleCombinedData);
@@ -224,6 +230,28 @@ class DrivingService extends ChangeNotifier {
       additionalData: {
         'message': event.message,
         'details': event.details,
+      },
+    );
+    
+    // Forward to unified event stream
+    _drivingEventController.add(drivingEvent);
+  }
+  
+  /// Handles achievement events by forwarding them to the event stream
+  void _handleAchievementEvent(AchievementEvent event) {
+    // Convert achievement event to driving event for UI notification
+    final drivingEvent = DrivingEvent(
+      id: _uuid.v4(),
+      tripId: _tripService.currentTrip?.id ?? 'no_trip',
+      timestamp: event.timestamp,
+      eventType: 'achievement_earned',
+      severity: 0.0, // Not a negative event
+      additionalData: {
+        'badgeType': event.badgeType,
+        'badgeName': event.badgeName,
+        'badgeDescription': event.badgeDescription,
+        'level': event.level,
+        'isUpgrade': event.isUpgrade,
       },
     );
     
@@ -416,6 +444,12 @@ class DrivingService extends ChangeNotifier {
             'score': currentEcoScore,
           },
         ));
+        
+        // Check for achievements
+        final userId = trip.userId;
+        if (userId != null && userId.isNotEmpty) {
+          _achievementService.checkAchievementsAfterTrip(trip, userId);
+        }
         
         _updateDrivingStatus();
       }
