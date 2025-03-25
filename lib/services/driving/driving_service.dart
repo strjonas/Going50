@@ -13,6 +13,7 @@ import 'package:going50/services/permission_service.dart';
 import 'package:going50/services/service_locator.dart';
 import 'package:going50/services/gamification/achievement_service.dart';
 import 'package:going50/services/gamification/challenge_service.dart';
+import 'package:going50/services/background/background_service.dart';
 
 // Model imports
 import 'package:going50/core_models/trip.dart';
@@ -55,6 +56,7 @@ class DrivingService extends ChangeNotifier {
   late final PermissionService _permissionService;
   late final AchievementService _achievementService;
   late final ChallengeService _challengeService;
+  BackgroundService? _backgroundService;
   
   // Service state
   bool _isInitialized = false;
@@ -89,6 +91,10 @@ class DrivingService extends ChangeNotifier {
     _permissionService = serviceLocator<PermissionService>();
     _achievementService = serviceLocator<AchievementService>();
     _challengeService = serviceLocator<ChallengeService>();
+    
+    // Instead of directly trying to get the background service, which can cause circular 
+    // dependency issues, we'll initialize it later once both services are registered
+    
     _setupEventListeners();
     _initializeServices();
   }
@@ -410,6 +416,17 @@ class DrivingService extends ChangeNotifier {
       // Check for activity/motion sensor permissions
       await _permissionService.requestActivityRecognitionPermission();
       
+      // Start background service if available
+      if (_backgroundService != null) {
+        final canRunInBackground = await _backgroundService!.canRunInBackground();
+        if (canRunInBackground) {
+          _logger.info('Starting background service');
+          await _backgroundService!.startBackgroundService();
+        } else {
+          _logger.warning('Background service cannot run, continuing without it');
+        }
+      }
+      
       // Then ensure analytics is initialized
       await _analyticsService.initialize();
       
@@ -491,6 +508,19 @@ class DrivingService extends ChangeNotifier {
       // Optionally stop data collection (could keep collecting for next trip)
       // await _dataCollectionService.stopCollection();
       
+      // Stop background service if no immediate next trip expected
+      if (_backgroundService != null && _backgroundService!.isRunning) {
+        // We could check preferences here to see if we should keep
+        // the service running or not depending on user settings
+        final shouldStopBackgroundService = trip?.distanceKm != null && 
+            trip!.distanceKm! > 1.0; // Only stop if it was a real trip
+            
+        if (shouldStopBackgroundService) {
+          _logger.info('Stopping background service');
+          await _backgroundService!.stopBackgroundService();
+        }
+      }
+      
       return trip;
     } catch (e) {
       _setError('Error ending trip: $e');
@@ -563,5 +593,15 @@ class DrivingService extends ChangeNotifier {
     _drivingEventController.close();
     
     super.dispose();
+  }
+  
+  /// Setup the background service connection after initialization
+  Future<void> setupBackgroundService() async {
+    try {
+      _backgroundService = serviceLocator<BackgroundService>();
+      _logger.info('Background service found and integrated with DrivingService');
+    } catch (e) {
+      _logger.info('Background service not available, continuing without it: $e');
+    }
   }
 } 
