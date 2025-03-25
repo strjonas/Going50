@@ -251,14 +251,16 @@ class DataStorageManager {
     final now = DateTime.now();
     final tripId = _uuid.v4();
     
+    // Create the trip with the current user ID
     final trip = Trip(
       id: tripId,
       startTime: now,
       isCompleted: false,
+      userId: _currentUserId, // Set the user ID to associate trip with current user
     );
     
     await _database.saveTrip(trip);
-    _logger.info('Started new trip with ID: $tripId');
+    _logger.info('Started new trip with ID: $tripId for user: $_currentUserId');
     
     return trip;
   }
@@ -1080,7 +1082,10 @@ class DataStorageManager {
   Future<Map<String, dynamic>?> saveBadge(Map<String, dynamic> badge) async {
     try {
       // Ensure we're initialized
-      if (!_isInitialized) await initialize();
+      if (!_isInitialized) {
+        _logger.info('DataStorageManager not initialized, initializing before saving badge');
+        await initialize();
+      }
       
       // Extract values from the badge map
       final userId = badge['userId'] as String;
@@ -1089,14 +1094,54 @@ class DataStorageManager {
       final level = badge['level'] as int;
       final metadataJson = badge['metadataJson'] as String?;
       
-      // Save to database
-      await _database.saveBadge(
-        userId,
-        badgeType,
-        earnedDate,
-        level,
-        metadataJson,
-      );
+      _logger.info('Saving badge $badgeType level $level for user $userId');
+      
+      // Verify user exists in database before trying to save badge (to avoid foreign key issues)
+      final userExists = await _database.getUserProfileById(userId) != null;
+      if (!userExists) {
+        _logger.severe('Cannot save badge: User $userId does not exist in database');
+        return null;
+      }
+      
+      // Save to database with retry logic
+      int attempts = 0;
+      const maxAttempts = 3;
+      bool saveSuccess = false;
+      
+      while (!saveSuccess && attempts < maxAttempts) {
+        attempts++;
+        try {
+          _logger.info('Attempting to save badge $badgeType (attempt $attempts)');
+          
+          await _database.saveBadge(
+            userId,
+            badgeType,
+            earnedDate,
+            level,
+            metadataJson,
+          );
+          
+          // Verify the badge was saved
+          final userBadges = await _database.getUserBadges(userId);
+          final badgeExists = userBadges.any((b) => b.badgeType == badgeType);
+          
+          if (badgeExists) {
+            _logger.info('Badge $badgeType successfully saved for user $userId');
+            saveSuccess = true;
+          } else {
+            _logger.warning('Badge $badgeType not found after save attempt');
+            await Future.delayed(Duration(milliseconds: 100 * attempts));
+          }
+        } catch (e) {
+          _logger.warning('Error saving badge on attempt $attempts: $e');
+          await Future.delayed(Duration(milliseconds: 100 * attempts));
+        }
+      }
+      
+      if (!saveSuccess) {
+        _logger.severe('Failed to save badge $badgeType after $maxAttempts attempts');
+        return null;
+      }
       
       // Return the saved badge
       return badge;
@@ -1110,19 +1155,36 @@ class DataStorageManager {
   Future<List<Map<String, dynamic>>> getUserBadges(String userId) async {
     try {
       // Ensure we're initialized
-      if (!_isInitialized) await initialize();
+      if (!_isInitialized) {
+        _logger.info('DataStorageManager not initialized, initializing before getting badges');
+        await initialize();
+      }
+      
+      _logger.info('Getting badges from database for user $userId');
       
       // Get badges from database
       final badges = await _database.getUserBadges(userId);
+      _logger.info('Retrieved ${badges.length} badges from database for user $userId');
+      
+      // If badges is empty, log it
+      if (badges.isEmpty) {
+        _logger.info('No badges found in database for user $userId');
+      } else {
+        // Log all badge types for debugging
+        final badgeTypes = badges.map((b) => b.badgeType).toList();
+        _logger.info('Badge types for user $userId: ${badgeTypes.join(', ')}');
+      }
       
       // Convert to Maps
-      return badges.map((badge) => {
+      final mappedBadges = badges.map((badge) => {
         'userId': badge.userId,
         'badgeType': badge.badgeType,
         'earnedDate': badge.earnedDate,
         'level': badge.level,
         'metadataJson': badge.metadataJson,
       }).toList();
+      
+      return mappedBadges;
     } catch (e) {
       _logger.severe('Error getting user badges: $e');
       return [];

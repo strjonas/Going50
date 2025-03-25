@@ -42,16 +42,38 @@ class _AchievementsGridState extends State<AchievementsGrid> {
   @override
   void initState() {
     super.initState();
-    // Check if user service is initialized with a small delay
+    
+    if (kDebugMode) {
+      print('AchievementsGrid: Initializing');
+    }
+    
+    // Initial load with a small delay to ensure services are ready
     Future.delayed(Duration(milliseconds: 500), () {
       if (mounted) {
+        if (kDebugMode) {
+          print('AchievementsGrid: Loading badges after delay');
+        }
         _loadBadges();
       }
     });
     
     // Subscribe to achievement events to update the grid when new badges are earned
     _achievementService.achievementEventStream.listen((event) {
-      _loadBadges(); // Reload badges when a new one is earned
+      if (kDebugMode) {
+        print('AchievementsGrid: Achievement event received: ${event.badgeType}');
+      }
+      
+      // Force badge cache refresh by clearing the cache
+      if (mounted) {
+        if (kDebugMode) {
+          print('AchievementsGrid: Reloading badges after achievement event');
+        }
+        
+        // Short delay to ensure the badge is saved to the database
+        Future.delayed(Duration(milliseconds: 300), () {
+          if (mounted) _loadBadges();
+        });
+      }
     });
   }
   
@@ -146,20 +168,41 @@ class _AchievementsGridState extends State<AchievementsGrid> {
     
     // Then add badges that aren't earned yet (up to max count)
     for (final badgeType in badgeTypes) {
+      final type = badgeType['badgeType'] as String;
+      
       // Skip if user already has this badge
-      if (userBadges.any((b) => b['badgeType'] == badgeType['badgeType'])) {
+      if (userBadges.any((b) => b['badgeType'] == type)) {
         continue;
       }
       
-      // Add unearned badge with progress (mocked for now until we have real progress tracking)
-      processedBadges.add({
-        'badgeType': badgeType['badgeType'],
+      // Get the badge definition to add to unearned badges
+      Map<String, dynamic> badgeData = {
+        'badgeType': type,
         'name': badgeType['name'],
         'description': badgeType['description'],
         'earned': false,
-        'progress': 0.0, // We'll need a way to track progress for each badge type
-        'icon': _getBadgeIcon(badgeType['badgeType']),
+        'progress': 0.0, // Default progress
+        'icon': _getBadgeIcon(type),
+      };
+      
+      // Request progress from achievement service (async)
+      // This will be updated in a future implementation
+      _achievementService.getBadgeProgress(
+        _userService.currentUser?.id ?? '', 
+        type
+      ).then((progress) {
+        if (mounted && progress != null) {
+          // Find and update the badge in the list
+          final index = processedBadges.indexWhere((b) => b['badgeType'] == type);
+          if (index >= 0) {
+            setState(() {
+              processedBadges[index]['progress'] = progress;
+            });
+          }
+        }
       });
+      
+      processedBadges.add(badgeData);
     }
     
     return processedBadges;
@@ -385,7 +428,10 @@ class _AchievementsGridState extends State<AchievementsGrid> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Padding(
+        // Make the dialog larger to avoid horizontal squashing
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 48.0),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9, // Occupy 90% of screen width
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -408,13 +454,14 @@ class _AchievementsGridState extends State<AchievementsGrid> {
                 ],
               ),
               const SizedBox(height: 16),
+              // Use less columns in the expanded view for better spacing
               Expanded(
                 child: GridView.builder(
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.8,
+                    crossAxisCount: 2, // Reduced from 3 to 2 for better spacing
+                    crossAxisSpacing: 16, // Increased from 12 to 16
+                    mainAxisSpacing: 16, // Increased from 12 to 16
+                    childAspectRatio: 1.0, // Adjusted for better proportions
                   ),
                   itemCount: _badges.length,
                   itemBuilder: (context, index) {

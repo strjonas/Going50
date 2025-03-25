@@ -344,13 +344,18 @@ class ChallengeService extends ChangeNotifier {
         return List.from(_userChallengesCache[userId]!);
       }
       
-      // Fetch from database
+      // Fetch all user challenges from database
       final userChallenges = await _dataStorageManager.getUserChallenges();
       
-      // Cache the results
-      _userChallengesCache[userId] = userChallenges;
+      // Filter challenges for the current user
+      final filteredChallenges = userChallenges
+          .where((uc) => uc.userId == userId)
+          .toList();
       
-      return userChallenges;
+      // Cache the results
+      _userChallengesCache[userId] = filteredChallenges;
+      
+      return filteredChallenges;
     } catch (e) {
       _logger.warning('Error getting user challenges: $e');
       return [];
@@ -372,6 +377,32 @@ class ChallengeService extends ChangeNotifier {
     return userChallenges
         .where((uc) => challengeIds.contains(uc.challengeId))
         .toList();
+  }
+  
+  /// Get a specific challenge by ID
+  Future<Challenge?> _getChallenge(String challengeId) async {
+    // First check in cache
+    if (_challengesCache.containsKey(challengeId)) {
+      return _challengesCache[challengeId];
+    }
+    
+    try {
+      // Get all challenges if not in cache
+      final challenges = await getAllChallenges();
+      
+      // Find matching challenge
+      for (final challenge in challenges) {
+        if (challenge.id == challengeId) {
+          return challenge;
+        }
+      }
+      
+      _logger.warning('Challenge not found with ID: $challengeId');
+      return null;
+    } catch (e) {
+      _logger.warning('Error getting challenge with ID $challengeId: $e');
+      return null;
+    }
   }
   
   /// Start a challenge for a user

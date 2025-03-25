@@ -3,6 +3,7 @@ import 'package:logging/logging.dart';
 import 'package:going50/core_models/user_profile.dart';
 import 'package:going50/data_lib/data_storage_manager.dart';
 import 'package:going50/services/driving/performance_metrics_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// LeaderboardService manages leaderboard functionality
 ///
@@ -144,117 +145,194 @@ class LeaderboardService {
     }
   }
   
-  /// Get mock global leaderboard
+  /// Get global leaderboard
   Future<List<Map<String, dynamic>>> _getGlobalLeaderboard(String timeframe) async {
     _log.info('Getting global leaderboard for $timeframe');
     
-    // In a real implementation, this would be fetched from a database or API
-    // For now, we'll return mock data
-    return [
-      {
-        'userId': 'user1',
-        'name': 'Taylor Green',
-        'score': 95,
-        'trend': 'up',
-      },
-      {
-        'userId': 'user2',
-        'name': 'Jordan Rivera',
-        'score': 92,
-        'trend': 'same',
-      },
-      {
-        'userId': 'friend1',
-        'name': 'Alex Johnson',
-        'score': 88,
-        'trend': 'up',
-        'isFriend': true,
-      },
-      {
-        'userId': 'user3',
-        'name': 'Casey Lee',
-        'score': 85,
-        'trend': 'down',
-      },
-      {
-        'userId': 'user4',
-        'name': 'Morgan Chen',
-        'score': 82,
-        'trend': 'up',
-      },
-    ];
+    try {
+      // In a real implementation, this would use a dedicated API
+      // For now, we'll create a simple leaderboard from available data
+      final List<Map<String, dynamic>> leaderboardData = [];
+      
+      // Get a limited set of user IDs to test with
+      // In the future, this would scale to handle all users
+      final testUserIds = await _getTestUserIds();
+      
+      // For each user, get their profile and metrics
+      for (final userId in testUserIds) {
+        final userProfile = await _dataStorageManager.getUserProfileById(userId);
+        
+        // Skip if profile not found or not public
+        if (userProfile == null || !userProfile.isPublic) {
+          continue;
+        }
+        
+        // Get user's performance metrics
+        final metrics = await _metricsService.getUserPerformanceMetrics(userId);
+        if (metrics == null) continue;
+        
+        final scoreKey = _getScoreKeyForTimeframe(timeframe);
+        final score = metrics[scoreKey] ?? metrics['ecoScore'] ?? 0;
+        
+        leaderboardData.add({
+          'userId': userId,
+          'name': userProfile.name,
+          'score': score,
+          'trend': await _getUserTrend(userId, timeframe),
+        });
+      }
+      
+      // Sort by score (descending)
+      leaderboardData.sort((a, b) => (b['score'] as num).compareTo(a['score'] as num));
+      
+      return leaderboardData;
+    } catch (e) {
+      _log.severe('Error getting global leaderboard: $e');
+      return [];
+    }
   }
   
-  /// Get mock regional leaderboard
+  /// Get a list of user IDs for testing the leaderboard
+  /// In a real implementation, this would be replaced with a proper user query
+  Future<List<String>> _getTestUserIds() async {
+    try {
+      // Get current user ID
+      final currentUserId = await _getCurrentUserId();
+      if (currentUserId == null) return [];
+      
+      // Get friend IDs
+      final friendIds = await _dataStorageManager.getFriendIds(currentUserId);
+      
+      // Combine current user and friends
+      final userIds = [currentUserId, ...friendIds];
+      
+      // Add some sample IDs in case we don't have enough friends yet
+      const sampleIds = ['user1', 'user2', 'user3', 'user4', 'user5'];
+      
+      // Only use sample IDs if we don't have enough real users
+      if (userIds.length < 5) {
+        for (final id in sampleIds) {
+          if (!userIds.contains(id)) {
+            userIds.add(id);
+          }
+          if (userIds.length >= 10) break;
+        }
+      }
+      
+      return userIds;
+    } catch (e) {
+      _log.warning('Error getting test user IDs: $e');
+      return [];
+    }
+  }
+  
+  /// Get regional leaderboard
   Future<List<Map<String, dynamic>>> _getRegionalLeaderboard(String timeframe, String? regionId) async {
     _log.info('Getting regional leaderboard for $timeframe in region $regionId');
     
-    // In a real implementation, this would be fetched from a database or API
-    // For now, we'll return mock data
-    return [
-      {
-        'userId': 'local1',
-        'name': 'Alex Morgan',
-        'score': 91,
-        'trend': 'up',
-      },
-      {
-        'userId': 'friend2',
-        'name': 'Jamie Smith',
-        'score': 87,
-        'trend': 'up',
-        'isFriend': true,
-      },
-      {
-        'userId': 'local2',
-        'name': 'Riley Johnson',
-        'score': 84,
-        'trend': 'down',
-      },
-      {
-        'userId': 'local3',
-        'name': 'Taylor Swift',
-        'score': 82,
-        'trend': 'same',
-      },
-      {
-        'userId': 'local4',
-        'name': 'Chris Martin',
-        'score': 79,
-        'trend': 'up',
-      },
-    ];
+    try {
+      // For now, return the global leaderboard as we don't have region data
+      // In a real implementation, we would filter users by region
+      return _getGlobalLeaderboard(timeframe);
+    } catch (e) {
+      _log.severe('Error getting regional leaderboard: $e');
+      return [];
+    }
   }
   
-  /// Get mock friends leaderboard
+  /// Get friends leaderboard
   Future<List<Map<String, dynamic>>> _getFriendsLeaderboard(String timeframe) async {
     _log.info('Getting friends leaderboard for $timeframe');
     
-    // In a real implementation, this would be fetched from a database or API
-    // For now, we'll return mock data
-    return [
-      {
-        'userId': 'friend1',
-        'name': 'Alex Johnson',
-        'score': 88,
-        'trend': 'up',
-        'isFriend': true,
-      },
-      {
-        'userId': 'friend2',
-        'name': 'Jamie Smith',
-        'score': 84,
-        'trend': 'up',
-        'isFriend': true,
-      },
-      {
-        'userId': 'friend3',
-        'name': 'Sam Williams',
-        'score': 79,
-        'trend': 'down',
-        'isFriend': true,
-      },
-    ];
+    try {
+      final List<Map<String, dynamic>> leaderboardData = [];
+      
+      // Get current user
+      final currentUser = await _getCurrentUserId();
+      if (currentUser == null) {
+        _log.warning('No current user found');
+        return [];
+      }
+      
+      // Get friend IDs
+      final friendIds = await _dataStorageManager.getFriendIds(currentUser);
+      if (friendIds.isEmpty) {
+        _log.info('No friends found');
+        return [];
+      }
+      
+      // Get current user's metrics and add to leaderboard
+      final currentUserMetrics = await _metricsService.getUserPerformanceMetrics(currentUser);
+      final currentUserProfile = await _dataStorageManager.getUserProfileById(currentUser);
+      
+      if (currentUserMetrics != null && currentUserProfile != null) {
+        final scoreKey = _getScoreKeyForTimeframe(timeframe);
+        final score = currentUserMetrics[scoreKey] ?? currentUserMetrics['ecoScore'] ?? 0;
+        
+        leaderboardData.add({
+          'userId': currentUser,
+          'name': currentUserProfile.name,
+          'score': score,
+          'trend': await _getUserTrend(currentUser, timeframe),
+          'isUser': true,
+        });
+      }
+      
+      // Get friend metrics and add to leaderboard
+      for (final friendId in friendIds) {
+        final friendProfile = await _dataStorageManager.getUserProfileById(friendId);
+        if (friendProfile == null) continue;
+        
+        final metrics = await _metricsService.getUserPerformanceMetrics(friendId);
+        if (metrics != null) {
+          final scoreKey = _getScoreKeyForTimeframe(timeframe);
+          final score = metrics[scoreKey] ?? metrics['ecoScore'] ?? 0;
+          
+          leaderboardData.add({
+            'userId': friendId,
+            'name': friendProfile.name,
+            'score': score,
+            'trend': await _getUserTrend(friendId, timeframe),
+            'isFriend': true,
+          });
+        }
+      }
+      
+      // Sort by score (descending)
+      leaderboardData.sort((a, b) => (b['score'] as num).compareTo(a['score'] as num));
+      
+      return leaderboardData;
+    } catch (e) {
+      _log.severe('Error getting friends leaderboard: $e');
+      return [];
+    }
+  }
+  
+  /// Get the appropriate score key based on the timeframe
+  String _getScoreKeyForTimeframe(String timeframe) {
+    switch (timeframe) {
+      case 'daily':
+        return 'dailyEcoScore';
+      case 'weekly':
+        return 'weeklyEcoScore';
+      case 'monthly':
+        return 'monthlyEcoScore';
+      case 'alltime':
+      default:
+        return 'ecoScore';
+    }
+  }
+  
+  /// Get current user ID
+  Future<String?> _getCurrentUserId() async {
+    try {
+      // Get shared preferences
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('user_id');
+    } catch (e) {
+      _log.warning('Error getting current user ID: $e');
+      return null;
+    }
   }
   
   /// Check if cache is valid

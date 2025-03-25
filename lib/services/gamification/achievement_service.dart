@@ -92,6 +92,12 @@ class BadgeType {
   
   /// Early Adopter - used app in early stages
   static const String earlyAdopter = 'early_adopter';
+  
+  /// First Trip - completed first trip with the app
+  static const String firstTrip = 'first_trip';
+  
+  /// OBD Connected - successfully connected to an OBD-II adapter
+  static const String obdConnected = 'obd_connected';
 }
 
 /// Service that manages achievement tracking and awarding
@@ -247,6 +253,27 @@ class AchievementService extends ChangeNotifier {
         'metric': 'appInstallDate',
         'special': true,
       },
+      
+      // New achievements
+      BadgeType.firstTrip: {
+        'name': 'First Journey',
+        'description': 'Completed your first trip with Going50',
+        'levels': [
+          {'threshold': 1, 'description': 'Completed your first trip with Going50 - the beginning of your eco-driving journey!'},
+        ],
+        'metric': 'tripCount',
+        'special': true,
+      },
+      
+      BadgeType.obdConnected: {
+        'name': 'Connected Driver',
+        'description': 'Successfully connected to an OBD-II adapter',
+        'levels': [
+          {'threshold': 1, 'description': 'Successfully connected to an OBD-II adapter - unlocking enhanced driving insights!'},
+        ],
+        'metric': 'obdConnected',
+        'special': true,
+      },
     };
   }
   
@@ -391,6 +418,8 @@ class AchievementService extends ChangeNotifier {
     bool isUpgrade = false,
   }) async {
     try {
+      _logger.info('Beginning award process for badge $badgeType level $level to user $userId');
+      
       // Get badge definition
       final definition = _achievementDefinitions[badgeType];
       if (definition == null) {
@@ -400,8 +429,18 @@ class AchievementService extends ChangeNotifier {
       
       final badgeName = definition['name'] as String;
       final levels = definition['levels'] as List;
+      
+      // Safety check for level boundaries
+      if (level < 1 || level > levels.length) {
+        _logger.warning('Invalid level $level for badge $badgeType (max level: ${levels.length})');
+        // Default to level 1 if invalid
+        level = 1;
+      }
+      
       final levelDef = levels[level - 1];
       final badgeDescription = levelDef['description'] as String;
+      
+      _logger.info('Creating badge data for "$badgeName" ($badgeDescription)');
       
       // Create badge data
       final badge = {
@@ -417,6 +456,7 @@ class AchievementService extends ChangeNotifier {
       };
       
       // Save badge to database
+      _logger.info('Saving badge $badgeType to database for user $userId');
       final savedBadge = await _dataStorageManager.saveBadge(badge);
       
       if (savedBadge == null) {
@@ -427,9 +467,13 @@ class AchievementService extends ChangeNotifier {
       // Clear cache for this user
       _userBadgesCache.remove(userId);
       
+      // Create achievement event
+      final eventId = _uuid.v4();
+      _logger.info('Creating achievement event with ID $eventId');
+      
       // Create and broadcast achievement event
       final event = AchievementEvent(
-        id: _uuid.v4(),
+        id: eventId,
         userId: userId,
         badgeType: badgeType,
         badgeName: badgeName,
@@ -439,6 +483,7 @@ class AchievementService extends ChangeNotifier {
         isUpgrade: isUpgrade,
       );
       
+      // Emit event to stream
       _achievementEventController.add(event);
       _logger.info('${isUpgrade ? "Upgraded" : "Awarded"} badge $badgeName level $level to user $userId');
       
@@ -467,13 +512,25 @@ class AchievementService extends ChangeNotifier {
   /// Get badges for a specific user
   Future<List<Map<String, dynamic>>> getUserBadges(String userId) async {
     try {
+      _logger.info('Getting badges for user $userId');
+      
       // Check cache first
       if (_userBadgesCache.containsKey(userId)) {
+        _logger.info('Returning ${_userBadgesCache[userId]!.length} badges from cache for user $userId');
         return List.from(_userBadgesCache[userId]!);
       }
       
       // Fetch badges from database
+      _logger.info('Fetching badges from database for user $userId');
       final badges = await _dataStorageManager.getUserBadges(userId);
+      _logger.info('Retrieved ${badges.length} badges from database for user $userId');
+      
+      // If no badges found, return empty list
+      if (badges.isEmpty) {
+        _logger.info('No badges found for user $userId');
+        _userBadgesCache[userId] = [];
+        return [];
+      }
       
       // Process badges to add name and description from definitions
       final processedBadges = badges.map((badge) {
@@ -512,6 +569,7 @@ class AchievementService extends ChangeNotifier {
       
       // Cache the results
       _userBadgesCache[userId] = processedBadges;
+      _logger.info('Cached ${processedBadges.length} badges for user $userId');
       
       return processedBadges;
     } catch (e) {
@@ -535,17 +593,98 @@ class AchievementService extends ChangeNotifier {
     }).toList();
   }
   
+  /// Get a user's progress towards a specific badge type
+  /// Returns a value between 0.0 and 1.0 representing progress percentage
+  Future<double?> getBadgeProgress(String userId, String badgeType) async {
+    try {
+      _logger.info('Getting progress for badge $badgeType for user $userId');
+      
+      // Get the badge definition
+      final definition = _achievementDefinitions[badgeType];
+      if (definition == null) {
+        _logger.warning('Badge type $badgeType not found in definitions');
+        return null;
+      }
+      
+      // Get current badge level (0 if not earned yet)
+      final userBadges = await getUserBadges(userId);
+      final currentLevel = _getCurrentBadgeLevel(userBadges, badgeType);
+      
+      // If user already has max level, return 1.0 (100%)
+      final levels = definition['levels'] as List;
+      if (currentLevel >= levels.length) {
+        return 1.0;
+      }
+      
+      // Get the next level to check
+      final nextLevel = currentLevel + 1;
+      final levelDef = levels[nextLevel - 1];
+      final threshold = levelDef['threshold'] as int;
+      final metric = definition['metric'] as String;
+      
+      // Get user's performance metrics
+      final metrics = await _performanceMetricsService.getUserPerformanceMetrics(userId);
+      if (metrics == null) {
+        _logger.warning('No performance metrics found for user $userId');
+        return 0.0;
+      }
+      
+      // Get the metric value
+      final dynamic metricValue = metrics[metric];
+      if (metricValue == null) {
+        _logger.warning('Metric $metric not found in performance data');
+        return 0.0;
+      }
+      
+      // Calculate progress based on achievement type
+      double progress = 0.0;
+      
+      if (definition['cumulative'] == true) {
+        // Cumulative achievements (like total distance)
+        progress = (metricValue / threshold).clamp(0.0, 1.0);
+      } else if (definition['highest'] == true) {
+        // Highest score achievements
+        progress = (metricValue / threshold).clamp(0.0, 1.0);
+      } else if (definition.containsKey('minScore')) {
+        // Consecutive achievements with minimum score
+        final consecutiveCount = metrics['consecutive${metric.capitalize}'] ?? 0;
+        progress = (consecutiveCount / threshold).clamp(0.0, 1.0);
+      } else {
+        // Default calculation
+        progress = (metricValue / threshold).clamp(0.0, 1.0);
+      }
+      
+      _logger.info('Progress for badge $badgeType: $progress');
+      return progress;
+    } catch (e) {
+      _logger.warning('Error getting badge progress: $e');
+      return 0.0;
+    }
+  }
+  
   /// Award special badges triggered by special events
   Future<AchievementEvent?> awardSpecialBadge(String userId, String badgeType) async {
     try {
+      _logger.info('Starting award process for special badge $badgeType to user $userId');
+      
       if (!_achievementDefinitions.containsKey(badgeType)) {
-        _logger.warning('Special badge type $badgeType not found');
+        _logger.warning('Special badge type $badgeType not found in definitions');
         return null;
       }
       
       // Check if user already has this badge
+      _logger.info('Checking if user $userId already has badge $badgeType');
       final userBadges = await getUserBadges(userId);
+      _logger.info('User has ${userBadges.length} badges in total');
+      
+      // Log all badge types the user has for debugging
+      if (userBadges.isNotEmpty) {
+        final userBadgeTypes = userBadges.map((b) => b['badgeType'] as String).toList();
+        _logger.info('User badge types: ${userBadgeTypes.join(', ')}');
+      }
+      
       final currentLevel = _getCurrentBadgeLevel(userBadges, badgeType);
+      _logger.info('Current level for badge $badgeType: $currentLevel');
       
       if (currentLevel > 0) {
         _logger.info('User $userId already has badge $badgeType level $currentLevel');
@@ -553,11 +692,20 @@ class AchievementService extends ChangeNotifier {
       }
       
       // Award the badge
-      return await _awardBadge(
+      _logger.info('Awarding badge $badgeType to user $userId');
+      final achievementEvent = await _awardBadge(
         userId: userId,
         badgeType: badgeType,
         level: 1,
       );
+      
+      if (achievementEvent != null) {
+        _logger.info('Successfully awarded badge $badgeType to user $userId');
+      } else {
+        _logger.warning('Failed to award badge $badgeType to user $userId');
+      }
+      
+      return achievementEvent;
     } catch (e) {
       _logger.severe('Error awarding special badge: $e');
       return null;

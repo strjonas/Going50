@@ -11,7 +11,7 @@ import 'package:going50/services/driving/analytics_service.dart';
 import 'package:going50/services/driving/trip_service.dart';
 import 'package:going50/services/permission_service.dart';
 import 'package:going50/services/service_locator.dart';
-import 'package:going50/services/gamification/achievement_service.dart';
+import 'package:going50/services/gamification/achievement_service.dart' show AchievementService, BadgeType, AchievementEvent;
 import 'package:going50/services/gamification/challenge_service.dart';
 import 'package:going50/services/background/background_service.dart';
 import 'package:going50/services/background/notification_service.dart';
@@ -373,6 +373,15 @@ class DrivingService extends ChangeNotifier {
           severity: 0.0, // Not a negative event
           additionalData: {'deviceId': deviceId},
         ));
+        
+        // Award the OBD-connected achievement if user exists
+        final userId = _tripService.currentTrip?.userId;
+        if (userId != null) {
+          _logger.info('Awarding OBD-connected achievement to user $userId');
+          await _achievementService.awardSpecialBadge(userId, BadgeType.obdConnected);
+        } else {
+          _logger.info('Cannot award OBD-connected achievement: User not available');
+        }
       }
       return success;
     } catch (e) {
@@ -515,10 +524,26 @@ class DrivingService extends ChangeNotifier {
       if (completedTrip != null) {
         _logger.info('Trip ended successfully: ${completedTrip.id}');
         
-        // Check for achievements after trip
+        // Check if this is the user's first trip and award achievement
         if (completedTrip.userId != null) {
+          final tripCount = await _tripService.getUserTripCount(completedTrip.userId!);
+          _logger.info('User ${completedTrip.userId} has completed $tripCount trips');
+          
+          if (tripCount == 1) {
+            _logger.info('Awarding first trip achievement to user ${completedTrip.userId}');
+            final achievementEvent = await _achievementService.awardSpecialBadge(completedTrip.userId!, BadgeType.firstTrip);
+            if (achievementEvent != null) {
+              _logger.info('Successfully awarded first trip achievement!');
+            } else {
+              _logger.warning('Failed to award first trip achievement to user ${completedTrip.userId}');
+            }
+          }
+          
+          // Check for other achievements
           await _achievementService.checkAchievementsAfterTrip(completedTrip, completedTrip.userId!);
           await _challengeService.checkChallengesAfterTrip(completedTrip, completedTrip.userId!);
+        } else {
+          _logger.warning('Cannot award achievements for trip ${completedTrip.id} - userId is null');
         }
         
         // Send trip summary notification

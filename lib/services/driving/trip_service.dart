@@ -255,6 +255,30 @@ class TripService extends ChangeNotifier {
     return _dataStorageManager.watchTrips();
   }
   
+  /// Get the number of trips a user has completed
+  Future<int> getUserTripCount(String userId) async {
+    try {
+      // Get all trips
+      final allTrips = await getTripHistory();
+      _logger.info('Retrieved ${allTrips.length} trips from history');
+      
+      // Filter trips by userId
+      final userTrips = allTrips.where((trip) => trip.userId == userId).toList();
+      _logger.info('Found ${userTrips.length} trips for user $userId');
+      
+      // Log user IDs of retrieved trips for debugging
+      if (userTrips.isEmpty && allTrips.isNotEmpty) {
+        _logger.info('User IDs in trip history: ${allTrips.map((trip) => trip.userId).toSet().join(', ')}');
+      }
+      
+      // Return the count of completed user trips
+      return userTrips.length;
+    } catch (e) {
+      _logger.severe('Error getting user trip count: $e');
+      return 0; // Return 0 on error to be safe
+    }
+  }
+  
   /// Reset trip metrics
   void _resetMetrics() {
     _totalDistanceKm = 0.0;
