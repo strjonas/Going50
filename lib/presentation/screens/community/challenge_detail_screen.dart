@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 
 import 'package:going50/core/theme/app_colors.dart';
 import 'package:going50/services/gamification/challenge_service.dart';
@@ -40,11 +41,32 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
   
   // Add the UserService
   final UserService _userService = serviceLocator<UserService>();
+  
+  // Subscription for challenge state changes
+  StreamSubscription? _challengeStateSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadChallengeData();
+    
+    // Listen to challenge state changes from the service
+    _challengeStateSubscription = _challengeService.challengeStateChangeStream
+        .listen(_handleChallengeStateChange);
+  }
+  
+  @override
+  void dispose() {
+    _challengeStateSubscription?.cancel();
+    super.dispose();
+  }
+  
+  /// Handle challenge state changes from the service
+  void _handleChallengeStateChange(Map<String, dynamic> event) {
+    // Only process events relevant to this challenge
+    if (event['challengeId'] == widget.challengeId) {
+      _loadChallengeData();
+    }
   }
   
   /// Load challenge details from the service
@@ -111,27 +133,53 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
       }
       
       if (_isParticipating) {
-        // Currently there's no API for leaving a challenge
-        // This would be implemented in a real app
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Leaving challenges is not supported yet'),
-          ),
+        // Leave the challenge
+        final success = await _challengeService.leaveChallenge(
+          currentUser.id, 
+          widget.challengeId
         );
+        
+        if (success) {
+          // State will be updated via the event listener
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Left ${_challengeData!['title']} challenge'),
+            ),
+          );
+          
+          // Navigate back to previous screen
+          Navigator.of(context).pop();
+          return; // Return early since we've already popped
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to leave challenge'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       } else {
         // Join the challenge
-        // Invalidate cache to ensure fresh data after operation
-        await _challengeService.invalidateUserChallengesCache(currentUser.id);
-        await _challengeService.startChallenge(currentUser.id, widget.challengeId);
-        setState(() {
-          _isParticipating = true;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Joined ${_challengeData!['title']} challenge'),
-          ),
+        final result = await _challengeService.startChallenge(
+          currentUser.id, 
+          widget.challengeId
         );
+        
+        if (result != null) {
+          // State will be updated via the event listener
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Joined ${_challengeData!['title']} challenge'),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to join challenge'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
       
       // Reload challenge data

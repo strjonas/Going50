@@ -90,6 +90,22 @@ The app uses a `DataStorageManager` class that serves as the main data persisten
    - Fixed critical bug in `challenge_detail_screen.dart` where a hardcoded 'currentUser' ID was used instead of the actual user ID from UserService
    - Ensured consistent user ID usage between the challenge list and detail screens
 
+✅ **Implemented Challenge Leaving Functionality**
+   - Created `leaveChallenge` method in `ChallengeService` to allow users to opt out of challenges they've joined
+   - Added `deleteUserChallenge` method to `DataStorageManager` to remove user challenges from the database
+   - Implemented proper UI feedback during the leave operation with loading states and success/error notifications
+   - Added navigation handling to properly update the challenge list when returning to the main screen
+
+✅ **Refactored Challenge Feature to Reduce Technical Debt**
+   - Implemented an event bus pattern through `challengeStateChangeStream` to notify UI components of challenge state changes
+   - Centralized challenge UI data formatting to reduce code duplication
+   - Removed redundant cache invalidation calls by centralizing cache management in the service layer
+   - Created deterministic simulated participant counts for better consistency in the UI
+   - Improved error handling and logging across the challenge feature
+   - Reduced over-reliance on navigation result patterns for state updates
+   - Added proper cleanup of stream subscriptions in widget disposal
+   - Simplified UI code by extracting formatting logic into helper methods
+
 1. **Implement Local Profile Stats**
    - Update profile statistics to use real driving data from `PerformanceMetricsService`
    - Replace mock longest trip and streak data with actual values

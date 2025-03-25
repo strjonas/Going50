@@ -143,6 +143,10 @@ class ChallengeService extends ChangeNotifier {
   final StreamController<ChallengeEvent> _challengeEventController = 
       StreamController<ChallengeEvent>.broadcast();
   
+  // Challenge state change stream for UI updates
+  final StreamController<Map<String, dynamic>> _challengeStateChangeController = 
+      StreamController<Map<String, dynamic>>.broadcast();
+  
   // Cache of available challenges and user challenges
   final Map<String, Challenge> _challengesCache = {};
   final Map<String, List<UserChallenge>> _userChallengesCache = {};
@@ -160,6 +164,9 @@ class ChallengeService extends ChangeNotifier {
   
   /// Stream of challenge events (when challenges are updated or completed)
   Stream<ChallengeEvent> get challengeEventStream => _challengeEventController.stream;
+  
+  /// Stream of challenge state changes (joined, left, etc.) for UI updates
+  Stream<Map<String, dynamic>> get challengeStateChangeStream => _challengeStateChangeController.stream;
   
   /// Constructor
   ChallengeService(this._dataStorageManager, this._performanceMetricsService) {
@@ -532,6 +539,15 @@ class ChallengeService extends ChangeNotifier {
           );
           
           _challengeEventController.add(event);
+          
+          // Notify UI components about the state change
+          _challengeStateChangeController.add({
+            'action': 'joined',
+            'userId': userId,
+            'challengeId': challengeId,
+            'challengeTitle': challenge.title
+          });
+          
           _logger.info('User $userId started challenge: ${challenge.title}');
           
           return newChallenge;
@@ -574,6 +590,15 @@ class ChallengeService extends ChangeNotifier {
       );
       
       _challengeEventController.add(event);
+      
+      // Notify UI components about the state change
+      _challengeStateChangeController.add({
+        'action': 'joined',
+        'userId': userId,
+        'challengeId': challengeId,
+        'challengeTitle': challenge.title
+      });
+      
       _logger.info('User $userId started challenge: ${challenge.title}');
       
       return newChallenge;
@@ -979,6 +1004,83 @@ class ChallengeService extends ChangeNotifier {
     }
   }
   
+  /// Leave (abandon) a challenge that is in progress
+  /// 
+  /// This allows a user to opt out of a challenge they previously joined.
+  /// The challenge will be removed from their active challenges list.
+  Future<bool> leaveChallenge(String userId, String challengeId) async {
+    if (!_isInitialized) await _initialize();
+    
+    try {
+      _logger.info('User $userId attempting to leave challenge $challengeId');
+      
+      // Get the challenge definition
+      final challenge = _challengesCache[challengeId];
+      if (challenge == null) {
+        _logger.warning('Challenge not found with ID: $challengeId');
+        return false;
+      }
+      
+      // Get user challenges
+      final userChallenges = await getUserChallenges(userId);
+      
+      // Find the active challenge to leave
+      UserChallenge? userChallenge;
+      for (final uc in userChallenges) {
+        if (uc.challengeId == challengeId && !uc.isCompleted) {
+          userChallenge = uc;
+          break;
+        }
+      }
+      
+      // Return false if challenge not found or already completed
+      if (userChallenge == null) {
+        _logger.warning('No active challenge found with ID $challengeId for user $userId');
+        return false;
+      }
+      
+      // Delete the user challenge from the database
+      final success = await _dataStorageManager.deleteUserChallenge(userChallenge.id);
+      if (!success) {
+        _logger.warning('Failed to delete user challenge from database');
+        return false;
+      }
+      
+      // Clear the cache to ensure fresh data
+      _userChallengesCache.remove(userId);
+      
+      // Create and broadcast event
+      final event = ChallengeEvent(
+        id: _uuid.v4(),
+        userId: userId,
+        challengeId: challengeId,
+        challengeTitle: challenge.title,
+        progress: 0,
+        targetValue: challenge.targetValue,
+        timestamp: DateTime.now(),
+        eventType: 'abandoned',
+        isCompleted: false,
+      );
+      
+      _challengeEventController.add(event);
+      
+      // Notify UI components about the state change
+      _challengeStateChangeController.add({
+        'action': 'left',
+        'userId': userId,
+        'challengeId': challengeId,
+        'challengeTitle': challenge.title
+      });
+      
+      _logger.info('User $userId has left challenge: ${challenge.title}');
+      
+      return true;
+    } catch (e) {
+      _logger.severe('Error leaving challenge: $e');
+      return false;
+    }
+  }
+  
   /// Get detailed challenge with progress
   Future<Map<String, dynamic>?> getDetailedChallenge(String userId, String challengeId) async {
     if (!_isInitialized) await _initialize();
@@ -1037,6 +1139,7 @@ class ChallengeService extends ChangeNotifier {
   @override
   void dispose() {
     _challengeEventController.close();
+    _challengeStateChangeController.close();
     super.dispose();
   }
 } 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 import 'package:going50/core/theme/app_colors.dart';
 import 'package:going50/core/constants/route_constants.dart';
@@ -49,6 +50,9 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
   bool _isLoading = true;
   String? _errorMessage;
   
+  // Subscription for challenge state changes
+  StreamSubscription? _challengeStateSubscription;
+  
   final _logger = Logger('ChallengesView');
   
   @override
@@ -74,8 +78,25 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
       }
     });
     
+    // Subscribe to challenge state changes
+    _challengeStateSubscription = _challengeService.challengeStateChangeStream
+        .listen(_handleChallengeStateChange);
+    
     // Load challenges
     _loadChallenges();
+  }
+  
+  /// Handle challenge state changes from the service
+  void _handleChallengeStateChange(Map<String, dynamic> event) {
+    _logger.info('Challenge state change: ${event['action']} - ${event['challengeId']}');
+    
+    // Reload challenges on any state change
+    _loadChallenges();
+    
+    // If a challenge was joined, switch to active tab
+    if (event['action'] == 'joined') {
+      _tabController.animateTo(0); // Switch to active tab
+    }
   }
   
   /// Load challenges from service
@@ -114,10 +135,7 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
       final allChallenges = await _challengeService.getAllChallenges();
       _logger.info('Retrieved ${allChallenges.length} total challenges');
       
-      // Get user challenges - explicitly invalidate the cache first
-      // This ensures we get fresh data after joining a challenge
-      _logger.info('Invalidating user challenges cache for user: ${currentUser?.id}');
-      await _challengeService.invalidateUserChallengesCache(currentUser?.id ?? '');
+      // Get user challenges - no need to explicitly invalidate cache as service handles this
       final userChallenges = await _challengeService.getUserChallenges(
         currentUser?.id ?? '',
       );
@@ -134,11 +152,6 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
               .toList();
           _logger.info('Active challenges: ${_activeChallenges.length}');
           
-          // Log active challenge IDs for debugging
-          for (var challenge in _activeChallenges) {
-            _logger.info('Active challenge ID: ${challenge.challengeId}');
-          }
-          
           // Set up completed challenges
           _completedChallenges = userChallenges
               .where((uc) => uc.isCompleted)
@@ -150,9 +163,6 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
               .map((uc) => uc.challengeId)
               .toSet();
               
-          // Log active challenge IDs for debugging
-          _logger.info('All user challenge IDs: ${allUserChallengeIds.length}');
-          
           // Available challenges should be challenges NOT in any user challenges list
           _availableChallenges = allChallenges
               .where((c) => !allUserChallengeIds.contains(c.id))
@@ -173,9 +183,36 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
     }
   }
   
+  /// Create a formatted challenge map for UI components
+  Map<String, dynamic> _formatChallengeForUI(Challenge challenge, {UserChallenge? userChallenge}) {
+    final bool hasUserData = userChallenge != null;
+    
+    return {
+      'id': challenge.id,
+      'title': challenge.title,
+      'description': challenge.description,
+      'iconName': challenge.iconName ?? 'emoji_events',
+      'difficulty': _getDifficultyText(challenge.difficultyLevel),
+      'reward': '${challenge.rewardValue} ${challenge.rewardType ?? 'points'}',
+      'duration': _getDurationText(challenge.type),
+      'timeRemaining': _getTimeRemaining(challenge.type),
+      'participants': 50 + (challenge.id.hashCode % 100).abs(), // Simulated count but deterministic
+      
+      // User-specific data if available
+      if (hasUserData) ...{
+        'progress': userChallenge.progress,
+        'target': challenge.targetValue,
+        'isCompleted': userChallenge.isCompleted,
+        'completedDate': userChallenge.completedAt != null ? 
+            _formatDate(userChallenge.completedAt!) : null,
+      }
+    };
+  }
+  
   @override
   void dispose() {
     _tabController.dispose();
+    _challengeStateSubscription?.cancel();
     super.dispose();
   }
   
@@ -287,7 +324,7 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
       itemBuilder: (context, index) {
         final userChallenge = _activeChallenges[index];
         
-        // Find the challenge definition from ALL challenges, not just available ones
+        // Find the challenge definition from ALL challenges
         final challengeDef = _allChallenges.firstWhere(
           (c) => c.id == userChallenge.challengeId,
           orElse: () => Challenge(
@@ -300,17 +337,8 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
           ),
         );
         
-        // Convert to the map format used by the UI
-        final challengeMap = {
-          'id': userChallenge.challengeId,
-          'title': challengeDef.title,
-          'description': challengeDef.description,
-          'iconName': challengeDef.iconName ?? 'emoji_events',
-          'progress': userChallenge.progress,
-          'target': challengeDef.targetValue,
-          'timeRemaining': _getTimeRemaining(challengeDef.type),
-          'participants': 100, // Default value
-        };
+        // Use the new formatter helper
+        final challengeMap = _formatChallengeForUI(challengeDef, userChallenge: userChallenge);
         
         return _buildActiveChallengeCard(challengeMap);
       },
@@ -355,17 +383,8 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
       itemBuilder: (context, index) {
         final challenge = _availableChallenges[index];
         
-        // Convert to the map format used by the UI
-        final challengeMap = {
-          'id': challenge.id,
-          'title': challenge.title,
-          'description': challenge.description,
-          'iconName': challenge.iconName ?? 'emoji_events',
-          'difficulty': _getDifficultyText(challenge.difficultyLevel),
-          'reward': '${challenge.rewardValue} ${challenge.rewardType ?? 'points'}',
-          'duration': _getDurationText(challenge.type),
-          'participants': 100, // Default value
-        };
+        // Use the new formatter helper
+        final challengeMap = _formatChallengeForUI(challenge);
         
         return _buildAvailableChallengeCard(challengeMap);
       },
@@ -414,7 +433,7 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
       itemBuilder: (context, index) {
         final userChallenge = _completedChallenges[index];
         
-        // Find the challenge definition - use _allChallenges instead of _availableChallenges
+        // Find the challenge definition
         final challengeDef = _allChallenges.firstWhere(
           (c) => c.id == userChallenge.challengeId,
           orElse: () => Challenge(
@@ -427,15 +446,8 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
           ),
         );
         
-        // Convert to the map format used by the UI
-        final challengeMap = {
-          'id': userChallenge.challengeId,
-          'title': challengeDef.title,
-          'description': challengeDef.description,
-          'iconName': challengeDef.iconName ?? 'emoji_events',
-          'completedDate': _formatDate(userChallenge.completedAt ?? DateTime.now()),
-          'reward': '${challengeDef.rewardValue} ${challengeDef.rewardType ?? 'points'}',
-        };
+        // Use the new formatter helper
+        final challengeMap = _formatChallengeForUI(challengeDef, userChallenge: userChallenge);
         
         return _buildCompletedChallengeCard(challengeMap);
       },

@@ -813,6 +813,14 @@ class AppDatabase extends _$AppDatabase {
     );
   }
   
+  // Delete a user challenge
+  Future<int> deleteUserChallenge(String userChallengeId) async {
+    final query = delete(userChallengesTable)
+      ..where((t) => t.id.equals(userChallengeId));
+    
+    return await query.go();
+  }
+  
   Future<List<UserChallenge>> getUserChallengesForUser(String userId) async {
     final query = select(userChallengesTable)
       ..where((t) => t.userId.equals(userId));

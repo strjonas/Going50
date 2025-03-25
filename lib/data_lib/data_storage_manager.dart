@@ -693,6 +693,20 @@ class DataStorageManager {
     }
   }
   
+  /// Delete a user challenge
+  Future<bool> deleteUserChallenge(String userChallengeId) async {
+    if (!_isInitialized) await initialize();
+    
+    try {
+      await _database.deleteUserChallenge(userChallengeId);
+      _logger.info('Deleted user challenge: $userChallengeId');
+      return true;
+    } catch (e) {
+      _logger.warning('Error deleting user challenge: $e');
+      return false;
+    }
+  }
+  
   /// Save a social connection
   Future<void> saveSocialConnection(SocialConnection connection) async {
     if (!_isInitialized) await initialize();
