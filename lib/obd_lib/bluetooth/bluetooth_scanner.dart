@@ -97,7 +97,8 @@ class BluetoothScanner {
     } else {
       // Add the new device
       _discoveredDevices.add(bluetoothDevice);
-      _logger.info('Discovered device: ${bluetoothDevice.name} (${bluetoothDevice.id})');
+      // Use fine level for device discovery to reduce log spam
+      _logger.fine('Discovered device: ${bluetoothDevice.name} (${bluetoothDevice.id})');
     }
     
     // Notify listeners

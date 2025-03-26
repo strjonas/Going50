@@ -132,34 +132,70 @@ class ObdService extends ChangeNotifier {
   /// Scan for available Bluetooth devices
   ///
   /// Returns a stream of discovered devices
-  Stream<BluetoothDevice> scanForDevices() async* {
-    if (_isScanning) return;
+  Stream<BluetoothDevice> scanForDevices({Duration timeout = const Duration(seconds: 30)}) async* {
+    if (_isScanning) {
+      _logger.warning('Scan already in progress');
+      return;
+    }
     
     _isScanning = true;
     _errorMessage = null;
     notifyListeners();
     
     try {
-      _logger.info('Starting device scan');
+      _logger.info('Starting device scan with ${timeout.inSeconds}s timeout');
       
-      _scanner.startScan();
+      // Create a controller to convert list-based device updates to individual device emissions
+      final controller = StreamController<BluetoothDevice>();
       
-      await for (final devices in _scanner.devices) {
+      // Start the actual scan with timeout
+      _scanner.startScan(timeout: timeout);
+      
+      // Subscribe to devices stream to emit individual devices
+      final subscription = _scanner.devices.listen((devices) {
         for (final device in devices) {
-          _logger.fine('Found device: ${device.name} (${device.id})');
-          yield device;
+          // Only emit if the controller is still active
+          if (!controller.isClosed) {
+            controller.add(device);
+          }
         }
-      }
+      });
       
-      _scanner.stopScan();
-      _logger.info('Device scan completed');
+      // Set up a cleanup function
+      final cleanup = () {
+        _logger.info('Cleaning up scan resources');
+        subscription.cancel();
+        _scanner.stopScan();
+        controller.close();
+        _isScanning = false;
+        notifyListeners();
+      };
+      
+      // Make sure we clean up when the consumer cancels the subscription
+      controller.onCancel = cleanup;
+      
+      // Also ensure we clean up after the timeout
+      Future.delayed(timeout, () {
+        if (!controller.isClosed) {
+          _logger.info('Scan timeout reached after ${timeout.inSeconds}s');
+          cleanup();
+        }
+      });
+      
+      // Yield all devices from the controller's stream
+      await for (final device in controller.stream) {
+        yield device;
+      }
     } catch (e) {
       _errorMessage = 'Error scanning for devices: $e';
       _logger.severe(_errorMessage);
-      rethrow;
     } finally {
-      _isScanning = false;
-      notifyListeners();
+      // Ensure scan is stopped and state is updated even if there's an error
+      if (_isScanning) {
+        _scanner.stopScan();
+        _isScanning = false;
+        notifyListeners();
+      }
     }
   }
   
@@ -238,6 +274,16 @@ class ObdService extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+  
+  /// Stop scanning for devices
+  void stopScan() {
+    if (!_isScanning) return;
+    
+    _logger.info('Stopping device scan');
+    _scanner.stopScan();
+    _isScanning = false;
+    notifyListeners();
   }
   
   /// Disconnect from the OBD adapter

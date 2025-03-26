@@ -180,6 +180,14 @@ class ObdConnectionService extends ChangeNotifier {
     if (!_isScanning) return;
     
     _logger.info('Stopping device scan');
+    
+    // Call the OBD service's method to stop scanning
+    try {
+      _obdService.stopScan();
+    } catch (e) {
+      _logger.warning('Error stopping scan: $e');
+    }
+    
     _isScanning = false;
     notifyListeners();
   }

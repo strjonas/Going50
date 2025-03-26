@@ -82,6 +82,11 @@ class DrivingProvider extends ChangeNotifier {
     return _drivingService.deviceStream;
   }
   
+  /// Stop scanning for OBD devices
+  void stopScanningForDevices() {
+    _drivingService.stopScanningForDevices();
+  }
+  
   /// Connect to an OBD device
   Future<bool> connectToObdDevice(String deviceId) async {
     return await _drivingService.connectToObdDevice(deviceId);

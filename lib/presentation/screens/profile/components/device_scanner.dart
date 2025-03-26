@@ -45,6 +45,9 @@ class _DeviceScannerState extends State<DeviceScanner> {
   void _startScan() {
     final drivingProvider = Provider.of<DrivingProvider>(context, listen: false);
     
+    // Cancel any existing scan first
+    _stopScan();
+    
     setState(() {
       _isScanning = true;
       _errorMessage = null;
@@ -53,35 +56,44 @@ class _DeviceScannerState extends State<DeviceScanner> {
 
     try {
       // Subscribe to device stream
-      _scanSubscription?.cancel();
       _scanSubscription = drivingProvider.scanForObdDevices().listen(
         (devices) {
-          setState(() {
-            _devices = devices;
-          });
+          if (mounted) {
+            setState(() {
+              _devices = devices;
+            });
+          }
         },
         onError: (error) {
-          setState(() {
-            _isScanning = false;
-            _errorMessage = 'Failed to scan for devices: $error';
-          });
+          if (mounted) {
+            setState(() {
+              _isScanning = false;
+              _errorMessage = 'Failed to scan for devices: $error';
+            });
+          }
         },
         onDone: () {
-          setState(() {
-            _isScanning = false;
-          });
+          if (mounted) {
+            setState(() {
+              _isScanning = false;
+            });
+          }
         },
       );
 
       // Stop scan after 30 seconds if not already stopped
       Future.delayed(const Duration(seconds: 30), () {
-        _stopScan();
+        if (mounted && _isScanning) {
+          _stopScan();
+        }
       });
     } catch (e) {
-      setState(() {
-        _isScanning = false;
-        _errorMessage = 'Failed to scan for devices: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _isScanning = false;
+          _errorMessage = 'Failed to scan for devices: $e';
+        });
+      }
     }
   }
 
@@ -93,8 +105,13 @@ class _DeviceScannerState extends State<DeviceScanner> {
       _isScanning = false;
     });
 
+    // First cancel our subscription to prevent memory leaks
     _scanSubscription?.cancel();
     _scanSubscription = null;
+    
+    // Then tell the driving provider to stop scanning
+    final drivingProvider = Provider.of<DrivingProvider>(context, listen: false);
+    drivingProvider.stopScanningForDevices();
   }
 
   @override
