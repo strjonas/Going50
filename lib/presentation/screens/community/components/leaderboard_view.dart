@@ -118,6 +118,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
   
   /// Build compact view for the main community screen
   Widget _buildCompactView(BuildContext context, SocialProvider provider, List<dynamic> entries) {
+    final theme = Theme.of(context);
+    
     return Column(
       children: [
         // Using a consistent design for the filter tabs similar to SegmentedFilterBar
@@ -125,17 +127,17 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           height: 52, // Reduced height for compact view
           margin: const EdgeInsets.only(bottom: 20.0, left: 16.0, right: 16.0),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.cardTheme.color,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200, width: 1),
+            border: Border.all(color: theme.dividerTheme.color ?? Colors.transparent, width: 1),
             // Subtle shadow
-            boxShadow: [
+            boxShadow: theme.brightness == Brightness.light ? [
               BoxShadow(
                 color: Colors.grey.shade100,
                 blurRadius: 4,
                 offset: const Offset(0, 1),
               ),
-            ],
+            ] : null,
           ),
           child: Row(
             children: List.generate(
@@ -149,7 +151,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                   child: Container(
                     margin: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: _filterIndex == index ? Colors.white : Colors.transparent,
+                      color: _filterIndex == index ? theme.cardTheme.color : Colors.transparent,
                       borderRadius: BorderRadius.circular(10),
                       border: _filterIndex == index 
                           ? Border.all(color: AppColors.primary, width: 1.5)
@@ -161,7 +163,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                         style: TextStyle(
                           fontSize: 15, // Slightly smaller for compact view
                           fontWeight: _filterIndex == index ? FontWeight.w600 : FontWeight.w400,
-                          color: _filterIndex == index ? AppColors.primary : Colors.grey.shade500,
+                          color: _filterIndex == index ? AppColors.primary : theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                         ),
                       ),
                     ),
@@ -198,6 +200,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
   }
   
   Widget _buildUserRankingCard(BuildContext context, SocialProvider provider) {
+    final theme = Theme.of(context);
+    
     // Find user's rank in the leaderboard entries
     final userRank = provider.leaderboardEntries
         .firstWhere((entry) => entry['isUser'] == true, 
@@ -207,17 +211,17 @@ class _LeaderboardViewState extends State<LeaderboardView> {
       margin: const EdgeInsets.symmetric(horizontal: 16.0),
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200, width: 1),
-        // Subtle shadow for depth
-        boxShadow: [
+        border: Border.all(color: theme.dividerTheme.color ?? Colors.transparent, width: 1),
+        // Subtle shadow for depth - only for light mode
+        boxShadow: theme.brightness == Brightness.light ? [
           BoxShadow(
             color: Colors.grey.shade100,
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
-        ],
+        ] : null,
       ),
       child: Row(
         children: [
@@ -252,12 +256,13 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Your Ranking',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     letterSpacing: -0.5,
+                    color: theme.textTheme.titleLarge?.color,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -267,7 +272,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                       : 'Score: ${userRank['score']}',
                   style: TextStyle(
                     fontSize: 15,
-                    color: Colors.grey.shade600,
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                   ),
                 ),
               ],
@@ -290,25 +295,26 @@ class _LeaderboardViewState extends State<LeaderboardView> {
   }
   
   Widget _buildLeaderboardItem(BuildContext context, Map<String, dynamic> entry) {
+    final theme = Theme.of(context);
     final isUser = entry['isUser'] == true;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12.0),
       padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
       decoration: BoxDecoration(
-        color: isUser ? AppColors.primary.withOpacity(0.07) : Colors.white,
+        color: isUser ? AppColors.primary.withOpacity(0.07) : theme.cardTheme.color,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isUser ? AppColors.primary.withOpacity(0.3) : Colors.grey.shade200,
+          color: isUser ? AppColors.primary.withOpacity(0.3) : theme.dividerTheme.color ?? Colors.transparent,
           width: 1,
         ),
-        boxShadow: [
+        boxShadow: theme.brightness == Brightness.light ? [
           BoxShadow(
             color: Colors.grey.shade100,
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
-        ],
+        ] : null,
       ),
       child: Row(
         children: [
@@ -347,14 +353,14 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                   style: TextStyle(
                     fontWeight: isUser ? FontWeight.bold : FontWeight.w600,
                     fontSize: 16,
-                    color: isUser ? AppColors.primary : Colors.black87,
+                    color: isUser ? AppColors.primary : theme.textTheme.bodyLarge?.color,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'Score: ${entry['score']}',
                   style: TextStyle(
-                    color: Colors.grey.shade600,
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                     fontSize: 14,
                   ),
                 ),
@@ -368,15 +374,16 @@ class _LeaderboardViewState extends State<LeaderboardView> {
   
   /// Build a more compact leaderboard item for the compact view
   Widget _buildCompactLeaderboardItem(BuildContext context, dynamic entry) {
+    final theme = Theme.of(context);
     final bool isUser = entry['isUser'] ?? false;
     final bool isTopPerformer = entry['rank'] == 1;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 8.0),
       decoration: BoxDecoration(
-        color: isUser ? Colors.grey.shade200 : Colors.white,
+        color: isUser ? theme.colorScheme.surface.withOpacity(0.7) : theme.cardTheme.color,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200, width: 1),
+        border: Border.all(color: theme.dividerTheme.color ?? Colors.transparent, width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -392,7 +399,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: Colors.grey.shade700,
+                  color: theme.textTheme.bodyLarge?.color,
                 ),
               ),
             ),
@@ -404,7 +411,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: theme.brightness == Brightness.dark ? 
+                       AppColors.darkSurface : Colors.grey.shade300,
                 shape: BoxShape.circle,
               ),
               child: entry['photoUrl'] != null && entry['photoUrl'].isNotEmpty
@@ -419,7 +427,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                   )
                 : Icon(
                     Icons.person,
-                    color: Colors.grey.shade700,
+                    color: theme.brightness == Brightness.dark ?
+                           Colors.grey.shade400 : Colors.grey.shade700,
                   ),
             ),
             
@@ -437,7 +446,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: isUser ? AppColors.primary : Colors.black,
+                          color: isUser ? AppColors.primary : theme.textTheme.bodyLarge?.color,
                         ),
                       ),
                       if (isTopPerformer) ...[
@@ -445,7 +454,8 @@ class _LeaderboardViewState extends State<LeaderboardView> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.amber.shade100,
+                            color: theme.brightness == Brightness.dark ?
+                                   Colors.amber.shade800.withOpacity(0.3) : Colors.amber.shade100,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
@@ -478,9 +488,10 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             // Score
             Text(
               '${entry['score']}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
+                color: theme.textTheme.bodyLarge?.color,
               ),
             ),
           ],

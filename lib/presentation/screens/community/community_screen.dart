@@ -20,24 +20,27 @@ class CommunityScreen extends StatefulWidget {
 class _CommunityScreenState extends State<CommunityScreen> {
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: Colors.grey.shade100, // Light gray background between cards
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Community',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: theme.textTheme.displaySmall?.color,
             fontSize: 26, // Increased size to be larger than section headings
           ),
         ),
-        backgroundColor: Colors.white, // White background for AppBar
+        backgroundColor: theme.cardTheme.color, // Use card color for consistency
         elevation: 0, // Remove shadow for a more modern look
         centerTitle: false, // Left-aligned title
         actions: [
           // Search icon in the app bar
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.black),
+            icon: Icon(Icons.search, color: theme.textTheme.bodyLarge?.color),
             onPressed: () {
               // TODO: Implement search functionality
             },
@@ -72,12 +75,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
   
   Widget _buildLeaderboardSection() {
+    final theme = Theme.of(context);
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(8.0),
-        border: Border.all(color: Colors.grey.shade200), // Add thin border
+        border: Border.all(color: theme.dividerTheme.color ?? Colors.transparent), 
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,11 +92,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Leaderboard',
                   style: TextStyle(
                     fontSize: 22, // Smaller than parent title, larger than subheadings
                     fontWeight: FontWeight.bold,
+                    color: theme.textTheme.titleLarge?.color,
                   ),
                 ),
                 GestureDetector(
@@ -104,9 +110,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           appBar: AppBar(
                             title: const Text('Leaderboard'),
                             elevation: 0,
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            centerTitle: false,
                           ),
                           body: const Padding(
                             padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -139,12 +142,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
   
   Widget _buildActiveChallengesSection() {
+    final theme = Theme.of(context);
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(8.0),
-        border: Border.all(color: Colors.grey.shade200), // Add thin border
+        border: Border.all(color: theme.dividerTheme.color ?? Colors.transparent), 
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,11 +159,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Active Challenges',
                   style: TextStyle(
                     fontSize: 22, // Smaller than parent title, larger than subheadings
                     fontWeight: FontWeight.bold,
+                    color: theme.textTheme.titleLarge?.color,
                   ),
                 ),
                 GestureDetector(
@@ -171,9 +177,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           appBar: AppBar(
                             title: const Text('Challenges'),
                             elevation: 0,
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            centerTitle: false,
                           ),
                           body: const Padding(
                             padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -206,12 +209,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
   
   Widget _buildFriendsSection() {
+    final theme = Theme.of(context);
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(8.0),
-        border: Border.all(color: Colors.grey.shade200), // Add thin border
+        border: Border.all(color: theme.dividerTheme.color ?? Colors.transparent), 
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -221,11 +226,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Friends',
                   style: TextStyle(
                     fontSize: 22, // Smaller than parent title, larger than subheadings
                     fontWeight: FontWeight.bold,
+                    color: theme.textTheme.titleLarge?.color,
                   ),
                 ),
                 GestureDetector(
@@ -257,9 +263,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
   
   // Keep the existing dialog logic for adding friends
   void _showAddFriendsDialog(BuildContext context) {
+    final theme = Theme.of(context);
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: theme.cardTheme.color,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -274,34 +283,40 @@ class _CommunityScreenState extends State<CommunityScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Find Friends',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
+                    color: theme.textTheme.titleLarge?.color,
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Connect with other eco-drivers to compare your performance and compete in challenges together.',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey,
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                   ),
                 ),
                 const SizedBox(height: 24),
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: theme.inputDecorationTheme.fillColor ?? 
+                           (theme.brightness == Brightness.dark ? 
+                            AppColors.darkSurface : Colors.grey.shade100),
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(color: theme.dividerTheme.color ?? Colors.transparent),
                   ),
-                  child: const TextField(
+                  child: TextField(
                     decoration: InputDecoration(
                       hintText: 'Search by name or email',
-                      prefixIcon: Icon(Icons.search),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: theme.iconTheme.color,
+                      ),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
+                      contentPadding: const EdgeInsets.symmetric(
                         vertical: 15,
                         horizontal: 16,
                       ),
@@ -309,11 +324,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   'Suggested Friends',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: theme.textTheme.titleLarge?.color,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -336,8 +352,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       Navigator.pop(context);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
@@ -355,12 +369,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
   
   Widget _buildSuggestedFriendTile(BuildContext context, String name, String reason, int mutualFriends, int ecoScore) {
+    final theme = Theme.of(context);
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: theme.dividerTheme.color ?? Colors.transparent),
       ),
       child: Row(
         children: [
@@ -369,14 +385,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: theme.brightness == Brightness.dark ? 
+                     AppColors.darkSurface : Colors.grey.shade300,
               shape: BoxShape.circle,
             ),
             child: Center(
               child: Text(
                 name.substring(0, 1).toUpperCase(),
                 style: TextStyle(
-                  color: Colors.grey.shade700,
+                  color: theme.textTheme.bodyLarge?.color?.withOpacity(0.8),
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
                 ),
@@ -392,9 +409,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    color: theme.textTheme.bodyLarge?.color,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -402,7 +420,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   reason,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -411,14 +429,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     Icon(
                       Icons.people_outline,
                       size: 12,
-                      color: Colors.grey.shade600,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '$mutualFriends mutual',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade600,
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -432,7 +450,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       'Score: $ecoScore',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade600,
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                       ),
                     ),
                   ],
@@ -453,8 +471,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),

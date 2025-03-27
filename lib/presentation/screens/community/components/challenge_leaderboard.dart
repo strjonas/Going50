@@ -117,17 +117,20 @@ class _ChallengeLeaderboardState extends State<ChallengeLeaderboard> {
   
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
+      color: theme.cardTheme.color,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Leaderboard',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: theme.textTheme.titleLarge?.color,
             ),
           ),
           const SizedBox(height: 6),
@@ -135,7 +138,7 @@ class _ChallengeLeaderboardState extends State<ChallengeLeaderboard> {
             'Top participants in this challenge',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey.shade700,
+              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
             ),
           ),
           const SizedBox(height: 16),
@@ -155,7 +158,7 @@ class _ChallengeLeaderboardState extends State<ChallengeLeaderboard> {
                 child: Text(
                   'No participants yet',
                   style: TextStyle(
-                    color: Colors.grey.shade700,
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                   ),
                 ),
               ),
@@ -166,7 +169,7 @@ class _ChallengeLeaderboardState extends State<ChallengeLeaderboard> {
                 // Top participants list
                 ..._leaderboardEntries
                     .take(5)
-                    .map((entry) => _buildLeaderboardEntryTile(entry)),
+                    .map((entry) => _buildLeaderboardEntryTile(context, entry)),
                 
                 // Divider if current user is not in top 5
                 if (_currentUserEntry != null && 
@@ -178,7 +181,7 @@ class _ChallengeLeaderboardState extends State<ChallengeLeaderboard> {
                         Expanded(
                           child: Container(
                             height: 1,
-                            color: Colors.grey.shade200,
+                            color: theme.dividerTheme.color,
                           ),
                         ),
                         Padding(
@@ -186,7 +189,7 @@ class _ChallengeLeaderboardState extends State<ChallengeLeaderboard> {
                           child: Text(
                             '•••',
                             style: TextStyle(
-                              color: Colors.grey.shade500,
+                              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -194,7 +197,7 @@ class _ChallengeLeaderboardState extends State<ChallengeLeaderboard> {
                         Expanded(
                           child: Container(
                             height: 1,
-                            color: Colors.grey.shade200,
+                            color: theme.dividerTheme.color,
                           ),
                         ),
                       ],
@@ -204,7 +207,7 @@ class _ChallengeLeaderboardState extends State<ChallengeLeaderboard> {
                 // Current user's position (if not in top 5)
                 if (_currentUserEntry != null && 
                     !_leaderboardEntries.take(5).any((e) => e['isCurrentUser'] == true))
-                  _buildLeaderboardEntryTile(_currentUserEntry!),
+                  _buildLeaderboardEntryTile(context, _currentUserEntry!),
               ],
             ),
           
@@ -232,78 +235,77 @@ class _ChallengeLeaderboardState extends State<ChallengeLeaderboard> {
     );
   }
   
-  Widget _buildLeaderboardEntryTile(Map<String, dynamic> entry) {
+  Widget _buildLeaderboardEntryTile(BuildContext context, Map<String, dynamic> entry) {
     final bool isCurrentUser = entry['isCurrentUser'] == true;
+    final theme = Theme.of(context);
     
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: isCurrentUser ? AppColors.primary.withOpacity(0.1) : Colors.grey.shade50,
+        color: isCurrentUser 
+            ? AppColors.primary.withOpacity(0.1) 
+            : (theme.brightness == Brightness.dark 
+                ? theme.cardTheme.color?.withOpacity(0.7) 
+                : Colors.grey.shade50),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isCurrentUser ? AppColors.primary.withOpacity(0.3) : Colors.grey.shade200,
+          color: isCurrentUser 
+              ? AppColors.primary.withOpacity(0.3) 
+              : (theme.brightness == Brightness.dark 
+                  ? Colors.grey.shade800 
+                  : Colors.grey.shade200),
         ),
       ),
       child: Row(
         children: [
-          // Rank
+          // Rank with medal color for top 3
           Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
-              color: _getRankColor(entry['rank']),
+              color: _getMedalColor(entry['rank']).withOpacity(theme.brightness == Brightness.dark ? 0.2 : 0.1),
               shape: BoxShape.circle,
+              border: Border.all(
+                color: _getMedalColor(entry['rank']).withOpacity(theme.brightness == Brightness.dark ? 0.5 : 0.3),
+                width: 1.5,
+              ),
             ),
-            child: Text(
-              entry['rank'].toString(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+            child: Center(
+              child: Text(
+                '${entry['rank']}',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: _getMedalColor(entry['rank']),
+                ),
               ),
             ),
           ),
+          
           const SizedBox(width: 12),
           
-          // User info
+          // Participant name and progress/score
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   entry['name'],
                   style: TextStyle(
-                    fontWeight: isCurrentUser ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 14,
-                    color: isCurrentUser ? AppColors.primary : Colors.black,
+                    fontWeight: isCurrentUser ? FontWeight.bold : FontWeight.w500,
+                    color: isCurrentUser 
+                        ? AppColors.primary 
+                        : theme.textTheme.bodyLarge?.color,
                   ),
                 ),
                 Text(
-                  'Progress: ${entry['progress']}',
+                  '${entry['progress']}/${entry['target'] ?? 5}',
                   style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
+                    color: theme.textTheme.bodyLarge?.color?.withOpacity(0.8),
                   ),
                 ),
               ],
-            ),
-          ),
-          
-          // Score
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '${entry['score']}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
             ),
           ),
         ],
@@ -311,16 +313,16 @@ class _ChallengeLeaderboardState extends State<ChallengeLeaderboard> {
     );
   }
   
-  Color _getRankColor(int rank) {
+  Color _getMedalColor(int rank) {
     switch (rank) {
       case 1:
-        return Colors.amber.shade700; // Gold
+        return Colors.amber;
       case 2:
-        return Colors.blueGrey.shade400; // Silver
+        return Colors.blueGrey.shade300;
       case 3:
-        return Colors.brown.shade400; // Bronze
+        return Colors.brown.shade300;
       default:
-        return Colors.grey.shade500;
+        return AppColors.primary;
     }
   }
 } 

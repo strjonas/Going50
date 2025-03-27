@@ -24,15 +24,17 @@ class SegmentedFilterBar extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     // Clean, modern design with better spacing and visual clarity
     return Container(
       height: 52, // Optimal touch target height
       margin: const EdgeInsets.only(top: 4.0, bottom: 16.0), // Better spacing
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       decoration: BoxDecoration(
-        color: Colors.white, // Clean white background
+        color: theme.cardTheme.color, // Use theme color instead of hardcoded white
         border: Border(
-          bottom: BorderSide(color: Colors.grey.shade200, width: 1), // Subtle bottom border only
+          bottom: BorderSide(color: theme.dividerTheme.color ?? Colors.transparent, width: 1), // Use theme color
         ),
       ),
       child: Row(
@@ -44,10 +46,10 @@ class SegmentedFilterBar extends StatelessWidget {
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
                 decoration: BoxDecoration(
-                  color: Colors.white, // Keep it clean
+                  color: theme.cardTheme.color, // Use theme color
                   borderRadius: BorderRadius.circular(12), // More rounded corners
                   border: selectedIndex == index
-                      ? Border.all(color: AppColors.primary, width: 1.5) // Slightly thicker border for emphasis
+                      ? Border.all(color: AppColors.primary, width: 1.5) // Keep primary color for selection
                       : null,
                 ),
                 child: Center(
@@ -56,7 +58,7 @@ class SegmentedFilterBar extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: selectedIndex == index ? FontWeight.w600 : FontWeight.w400,
-                      color: selectedIndex == index ? AppColors.primary : Colors.grey.shade500,
+                      color: selectedIndex == index ? AppColors.primary : theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                     ),
                   ),
                 ),
@@ -86,6 +88,8 @@ class TimeFilterChipGroup extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     // Modern pill-style design with better spacing
     return Container(
       height: 44, // Optimal height
@@ -105,14 +109,14 @@ class TimeFilterChipGroup extends StatelessWidget {
                   duration: const Duration(milliseconds: 200), // Smooth transition
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), // More comfortable padding
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary : Colors.white,
+                    color: isSelected ? AppColors.primary : theme.cardTheme.color,
                     borderRadius: BorderRadius.circular(22), // More pronounced pill shape
                     border: Border.all(
-                      color: isSelected ? AppColors.primary : Colors.grey.shade300,
+                      color: isSelected ? AppColors.primary : theme.dividerTheme.color ?? Colors.transparent,
                       width: isSelected ? 1.5 : 1, // Thicker border for selected item
                     ),
-                    // Subtle shadow for depth
-                    boxShadow: isSelected ? [
+                    // Subtle shadow for depth - only in light mode
+                    boxShadow: isSelected && theme.brightness == Brightness.light ? [
                       BoxShadow(
                         color: AppColors.primary.withOpacity(0.2),
                         blurRadius: 4,
@@ -124,7 +128,7 @@ class TimeFilterChipGroup extends StatelessWidget {
                     options[index],
                     style: TextStyle(
                       fontSize: 14,
-                      color: isSelected ? Colors.white : Colors.grey.shade700,
+                      color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),

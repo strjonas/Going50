@@ -120,6 +120,8 @@ class StatisticsSummary extends StatelessWidget {
   
   /// Builds a section with title and list of statistics
   Widget _buildSection(BuildContext context, String title, List<Widget> items) {
+    final theme = Theme.of(context);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -127,9 +129,10 @@ class StatisticsSummary extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
+              color: theme.textTheme.titleLarge?.color,
             ),
           ),
         ),
@@ -141,6 +144,8 @@ class StatisticsSummary extends StatelessWidget {
   
   /// Builds a single statistic item with icon, value, and label
   Widget _buildStatisticItem(BuildContext context, IconData icon, String value, String label) {
+    final theme = Theme.of(context);
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -156,15 +161,16 @@ class StatisticsSummary extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[600],
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
               ),
             ),
           ),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
+              color: theme.textTheme.bodyLarge?.color,
             ),
           ),
         ],

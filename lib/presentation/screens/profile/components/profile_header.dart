@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:going50/presentation/providers/user_provider.dart';
-import 'package:going50/core_models/user_profile.dart';
 import 'package:going50/presentation/providers/insights_provider.dart';
+import 'package:going50/core_models/user_profile.dart';
+import 'package:going50/core/theme/app_colors.dart';
 
-/// ProfileHeader displays the user's profile information and overall eco-driving level
+/// ProfileHeader displays the user's profile information at the top of the profile screen.
+///
+/// This includes the user's name, profile picture, eco-score, and impact statistics.
 class ProfileHeader extends StatelessWidget {
   /// Constructor
   const ProfileHeader({super.key});
@@ -13,72 +16,100 @@ class ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
     final insightsProvider = Provider.of<InsightsProvider>(context);
-    final UserProfile? profile = userProvider.userProfile;
+    final theme = Theme.of(context);
     
-    // Overall eco-score (from insights provider)
+    // Get the user's eco score
     final overallScore = insightsProvider.currentMetrics?.overallEcoScore ?? 0;
-    final driverLevel = _getDriverLevelFromScore(overallScore.toDouble());
     
     return Column(
       children: [
-        // Avatar
-        CircleAvatar(
-          radius: 50,
-          backgroundColor: Theme.of(context).primaryColor,
-          child: Icon(
-            profile != null && !userProvider.isAnonymous
-                ? Icons.person
-                : Icons.person_outline,
-            size: 50,
-            color: Colors.white,
-          ),
-        ),
-        
-        const SizedBox(height: 16),
-        
-        // User name
-        Text(
-          profile?.name ?? 'Anonymous User',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        
-        const SizedBox(height: 8),
-        
-        // Eco-driver level badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
+        // User info section
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.eco,
-                size: 16,
-                color: Theme.of(context).primaryColor,
+              // Avatar placeholder
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: theme.brightness == Brightness.dark ? 
+                         AppColors.darkSurface : Colors.grey.shade200,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.person,
+                    size: 40,
+                    color: theme.brightness == Brightness.dark ? 
+                           Colors.grey.shade400 : Colors.grey.shade500,
+                  ),
+                ),
               ),
-              const SizedBox(width: 4),
-              Text(
-                driverLevel,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Theme.of(context).primaryColor,
+              const SizedBox(width: 20),
+              
+              // User name and details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userProvider.userProfile?.name ?? 'Green Driver',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      userProvider.isAnonymous 
+                          ? 'Anonymous User' 
+                          : (userProvider.userProfile?.email ?? 'No email'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getColorForScore(overallScore.toDouble()).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _getDriverLevelFromScore(overallScore.toDouble()),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: _getColorForScore(overallScore.toDouble()),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
         
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         
-        // Progress bar for eco-score
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+        // Eco-Score section
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: theme.dividerTheme.color ?? Colors.transparent),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -86,16 +117,17 @@ class ProfileHeader extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Eco-Driving Score',
+                    'Your Eco-Score',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: theme.textTheme.titleLarge?.color,
                     ),
                   ),
                   Text(
                     '$overallScore',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: _getColorForScore(overallScore.toDouble()),
                     ),
@@ -105,7 +137,8 @@ class ProfileHeader extends StatelessWidget {
               const SizedBox(height: 4),
               LinearProgressIndicator(
                 value: overallScore / 100,
-                backgroundColor: Colors.grey[200],
+                backgroundColor: theme.brightness == Brightness.dark ? 
+                                 Colors.grey.shade800 : Colors.grey.shade200,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   _getColorForScore(overallScore.toDouble()),
                 ),
@@ -123,9 +156,9 @@ class ProfileHeader extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.grey[50],
+            color: theme.cardTheme.color,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            border: Border.all(color: theme.dividerTheme.color ?? Colors.transparent),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -197,6 +230,8 @@ class ProfileHeader extends StatelessWidget {
   
   /// Builds an impact statistic item
   Widget _buildImpactStat(BuildContext context, IconData icon, String value, String label) {
+    final theme = Theme.of(context);
+    
     return Column(
       children: [
         Icon(
@@ -207,9 +242,10 @@ class ProfileHeader extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 14,
+            color: theme.textTheme.bodyLarge?.color,
           ),
         ),
         const SizedBox(height: 4),
@@ -217,7 +253,7 @@ class ProfileHeader extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[600],
+            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
           ),
         ),
       ],

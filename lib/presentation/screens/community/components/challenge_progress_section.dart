@@ -41,18 +41,20 @@ class ChallengeProgressSection extends StatelessWidget {
     final double progressPercent = targetValue > 0 
         ? (progress / targetValue).clamp(0.0, 1.0) 
         : 0;
+    final theme = Theme.of(context);
     
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
+      color: theme.cardTheme.color,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Progress',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: theme.textTheme.titleLarge?.color,
             ),
           ),
           const SizedBox(height: 16),
@@ -66,9 +68,10 @@ class ChallengeProgressSection extends StatelessWidget {
                       children: [
                         Text(
                           '$progress/$targetValue',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
+                            color: theme.textTheme.bodyLarge?.color,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -76,7 +79,7 @@ class ChallengeProgressSection extends StatelessWidget {
                           _getMetricLabel(metricType),
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey.shade700,
+                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                           ),
                         ),
                       ],
@@ -86,7 +89,8 @@ class ChallengeProgressSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                       child: LinearProgressIndicator(
                         value: progressPercent,
-                        backgroundColor: Colors.grey.shade200,
+                        backgroundColor: theme.brightness == Brightness.dark ? 
+                                         Colors.grey.shade800 : Colors.grey.shade200,
                         color: isCompleted ? AppColors.success : AppColors.primary,
                         minHeight: 12,
                       ),
@@ -95,27 +99,39 @@ class ChallengeProgressSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
-              _buildTimeRemaining(),
+              _buildTimeRemaining(context),
             ],
           ),
           const SizedBox(height: 16),
-          _buildInfoNote(),
+          _buildInfoNote(context),
         ],
       ),
     );
   }
   
-  Widget _buildTimeRemaining() {
+  Widget _buildTimeRemaining(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 12,
         vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: isCompleted ? AppColors.success.withOpacity(0.1) : Colors.grey.shade100,
+        color: isCompleted 
+            ? (theme.brightness == Brightness.dark 
+                ? AppColors.success.withOpacity(0.2) 
+                : AppColors.success.withOpacity(0.1))
+            : (theme.brightness == Brightness.dark 
+                ? Colors.grey.shade800 
+                : Colors.grey.shade100),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isCompleted ? AppColors.success.withOpacity(0.3) : Colors.grey.shade300,
+          color: isCompleted 
+              ? AppColors.success.withOpacity(0.3) 
+              : (theme.brightness == Brightness.dark 
+                  ? Colors.grey.shade700 
+                  : Colors.grey.shade300),
         ),
       ),
       child: Row(
@@ -124,7 +140,7 @@ class ChallengeProgressSection extends StatelessWidget {
           Icon(
             isCompleted ? Icons.check_circle : Icons.timer_outlined,
             size: 16,
-            color: isCompleted ? AppColors.success : Colors.grey.shade700,
+            color: isCompleted ? AppColors.success : theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
           ),
           const SizedBox(width: 4),
           Text(
@@ -132,7 +148,7 @@ class ChallengeProgressSection extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: isCompleted ? FontWeight.bold : FontWeight.normal,
-              color: isCompleted ? AppColors.success : Colors.grey.shade700,
+              color: isCompleted ? AppColors.success : theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
             ),
           ),
         ],
@@ -140,12 +156,16 @@ class ChallengeProgressSection extends StatelessWidget {
     );
   }
   
-  Widget _buildInfoNote() {
+  Widget _buildInfoNote(BuildContext context) {
+    final theme = Theme.of(context);
+    
     if (isCompleted) {
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.success.withOpacity(0.1),
+          color: theme.brightness == Brightness.dark
+              ? AppColors.success.withOpacity(0.2)
+              : AppColors.success.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -174,14 +194,18 @@ class ChallengeProgressSection extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.1),
+          color: theme.brightness == Brightness.dark
+              ? Colors.blue.shade900.withOpacity(0.3)
+              : Colors.blue.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
             Icon(
               Icons.info_outline,
-              color: Colors.blue.shade700,
+              color: theme.brightness == Brightness.dark
+                  ? Colors.blue.shade300
+                  : Colors.blue.shade700,
               size: 20,
             ),
             const SizedBox(width: 12),
@@ -189,7 +213,9 @@ class ChallengeProgressSection extends StatelessWidget {
               child: Text(
                 description,
                 style: TextStyle(
-                  color: Colors.blue.shade800,
+                  color: theme.brightness == Brightness.dark
+                      ? Colors.blue.shade300
+                      : Colors.blue.shade800,
                 ),
               ),
             ),

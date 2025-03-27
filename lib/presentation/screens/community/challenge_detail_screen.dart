@@ -220,6 +220,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
   
   Widget _buildChallengeContent() {
     final data = _challengeData!;
+    final theme = Theme.of(context);
     
     return SingleChildScrollView(
       child: Column(
@@ -229,7 +230,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
           _buildChallengeHeader(data),
           
           // Divider
-          const Divider(height: 1),
+          Divider(height: 1, color: theme.dividerTheme.color),
           
           // Progress section
           ChallengeProgressSection(
@@ -241,13 +242,13 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
           ),
           
           // Divider
-          const Divider(height: 1),
+          Divider(height: 1, color: theme.dividerTheme.color),
           
           // Reward section
           _buildRewardSection(data),
           
           // Divider
-          const Divider(height: 1),
+          Divider(height: 1, color: theme.dividerTheme.color),
           
           // Leaderboard section
           ChallengeLeaderboard(
@@ -261,10 +262,11 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
   
   Widget _buildChallengeHeader(Map<String, dynamic> data) {
     final bool isCompleted = data['isCompleted'] ?? false;
+    final theme = Theme.of(context);
     
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
+      color: theme.cardTheme.color,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -273,7 +275,8 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: theme.brightness == Brightness.dark ? 
+                         AppColors.darkSurface : AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -289,9 +292,10 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                   children: [
                     Text(
                       data['title'] ?? 'Challenge',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
+                        color: theme.textTheme.titleLarge?.color,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -299,7 +303,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                       _getDifficultyText(data['difficultyLevel']),
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey.shade700,
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                       ),
                     ),
                   ],
@@ -312,7 +316,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
             data['description'] ?? 'No description available',
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey.shade800,
+              color: theme.textTheme.bodyLarge?.color,
             ),
           ),
           const SizedBox(height: 16),
@@ -324,14 +328,14 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                     Icon(
                       Icons.people_outline,
                       size: 18,
-                      color: Colors.grey.shade700,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '${data['participantCount'] ?? '120'} participants',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey.shade700,
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                       ),
                     ),
                   ],
@@ -340,8 +344,12 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
               ElevatedButton(
                 onPressed: isCompleted ? null : _toggleParticipation,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _isParticipating ? Colors.grey.shade200 : AppColors.primary,
-                  foregroundColor: _isParticipating ? Colors.grey.shade800 : Colors.white,
+                  backgroundColor: _isParticipating ? 
+                    (theme.brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade200) 
+                    : AppColors.primary,
+                  foregroundColor: _isParticipating ? 
+                    (theme.brightness == Brightness.dark ? Colors.grey.shade200 : Colors.grey.shade800) 
+                    : Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 12,
@@ -367,18 +375,20 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
   Widget _buildRewardSection(Map<String, dynamic> data) {
     final String rewardType = data['rewardType'] ?? 'points';
     final int rewardValue = data['rewardValue'] ?? 0;
+    final theme = Theme.of(context);
     
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
+      color: theme.cardTheme.color,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Reward',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: theme.textTheme.titleLarge?.color,
             ),
           ),
           const SizedBox(height: 16),
@@ -387,7 +397,8 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.secondary.withOpacity(0.1),
+                  color: theme.brightness == Brightness.dark ? 
+                         AppColors.darkSurface : AppColors.secondary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -418,7 +429,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                           : 'Points will be added to your total score',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey.shade700,
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                       ),
                     ),
                   ],
@@ -506,7 +517,8 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: theme.brightness == Brightness.dark ? 
+                           Colors.green.shade900.withOpacity(0.3) : Colors.green.shade100,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(

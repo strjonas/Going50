@@ -498,12 +498,15 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
   
+  /// Builds the UI for an active challenge card
   Widget _buildActiveChallengeCard(Map<String, dynamic> challenge) {
+    final theme = Theme.of(context);
     final double progressPercent = challenge['progress'] / challenge['target'];
     
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
+      color: theme.cardTheme.color,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -526,7 +529,8 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.15),
+                      color: theme.brightness == Brightness.dark ? 
+                             AppColors.darkSurface : AppColors.primary.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -542,9 +546,10 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                       children: [
                         Text(
                           challenge['title'],
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
+                            color: theme.textTheme.titleLarge?.color,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -552,7 +557,7 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                           challenge['description'],
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey.shade700,
+                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                           ),
                         ),
                       ],
@@ -562,105 +567,76 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
               ),
               const SizedBox(height: 20),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: theme.brightness == Brightness.dark ?
+                             Colors.blue.shade900.withOpacity(0.3) : Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
                       children: [
-                        Row(
-                          children: [
-                            Text(
-                              'Progress: ',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                            Text(
-                              '${challenge['progress']}/${challenge['target']}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        Icon(
+                          Icons.directions_run,
+                          size: 12,
+                          color: Colors.blue.shade700,
                         ),
-                        const SizedBox(height: 10),
-                        Stack(
-                          children: [
-                            // Background track
-                            Container(
-                              height: 10,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                            ),
-                            // Progress indicator
-                            FractionallySizedBox(
-                              widthFactor: progressPercent.clamp(0, 1),
-                              child: Container(
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [AppColors.primary.withOpacity(0.7), AppColors.primary],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                              ),
-                            ),
-                          ],
+                        const SizedBox(width: 4),
+                        Text(
+                          'Ongoing',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue.shade700,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 20),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.timer,
-                            size: 16,
-                            color: AppColors.secondary.withOpacity(0.7),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            challenge['timeRemaining'],
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade800,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.people,
-                            size: 16,
-                            color: AppColors.secondary.withOpacity(0.7),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${challenge['participants']}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade800,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  
+                  // Time remaining or expiry
+                  Text(
+                    '${challenge['daysRemaining'] ?? 'No'} days left',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                    ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Progress:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
+                  ),
+                  Text(
+                    '${challenge['progress']}/${challenge['target']} ${challenge['unit'] ?? ''}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: theme.textTheme.bodyLarge?.color,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progressPercent.clamp(0.0, 1.0),
+                  minHeight: 8,
+                  backgroundColor: theme.brightness == Brightness.dark ? 
+                                  Colors.grey.shade800 : Colors.grey.shade200,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                ),
               ),
             ],
           ),
@@ -669,10 +645,14 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
     );
   }
   
+  /// Builds the UI for an available challenge
   Widget _buildAvailableChallengeCard(Map<String, dynamic> challenge) {
+    final theme = Theme.of(context);
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
+      color: theme.cardTheme.color,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -695,12 +675,14 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
+                      color: theme.brightness == Brightness.dark ? 
+                             AppColors.darkSurface : Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       _getIconData(challenge['iconName']),
-                      color: Colors.grey.shade700,
+                      color: theme.brightness == Brightness.dark ? 
+                             Colors.grey.shade400 : Colors.grey.shade700,
                       size: 26,
                     ),
                   ),
@@ -711,9 +693,10 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                       children: [
                         Text(
                           challenge['title'],
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
+                            color: theme.textTheme.titleLarge?.color,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -721,22 +704,14 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                           challenge['description'],
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey.shade700,
+                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _buildDetailChip(Icons.star, challenge['difficulty']),
-                  _buildDetailChip(Icons.card_giftcard, challenge['reward']),
-                  _buildDetailChip(Icons.timer, challenge['duration']),
                 ],
               ),
               const SizedBox(height: 16),
@@ -746,116 +721,42 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                   Row(
                     children: [
                       Icon(
-                        Icons.people,
+                        Icons.emoji_events,
                         size: 16,
-                        color: Colors.grey.shade600,
+                        color: AppColors.primary,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 4),
                       Text(
-                        '${challenge['participants']} participants',
+                        'Reward: ${challenge['rewardValue']} points',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                          color: theme.textTheme.bodyMedium?.color,
                         ),
                       ),
                     ],
                   ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final currentUser = _userService.currentUser;
-                      if (currentUser != null) {
-                        // Show loading indicator
-                        setState(() {
-                          _isLoading = true;
-                        });
-                        
-                        try {
-                          // Clear the cache to ensure fresh data
-                          await _challengeService.invalidateUserChallengesCache(currentUser.id);
-                          
-                          // Start the challenge
-                          final result = await _challengeService.startChallenge(
-                            currentUser.id,
-                            challenge['id'],
-                          );
-                          
-                          if (result != null) {
-                            _logger.info('Successfully joined challenge: ${challenge['title']}');
-                            
-                            // Reload challenges to update UI
-                            await _loadChallenges();
-                            
-                            // Show success message
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Joined ${challenge['title']} challenge'),
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                              
-                              // Switch to active challenges tab to show the user their joined challenge
-                              _tabController.animateTo(0);
-                              
-                              // Log the lengths of each challenge list for debugging
-                              _logger.info('After join - Active: ${_activeChallenges.length}, '
-                                  'Available: ${_availableChallenges.length}, '
-                                  'Completed: ${_completedChallenges.length}');
-                            }
-                          } else {
-                            _logger.warning('Failed to join challenge: ${challenge['title']}');
-                            
-                            // Hide loading indicator
-                            setState(() {
-                              _isLoading = false;
-                            });
-                            
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Failed to join challenge. Please try again.'),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            }
-                          }
-                        } catch (e) {
-                          _logger.severe('Error joining challenge: $e');
-                          
-                          // Hide loading indicator
-                          setState(() {
-                            _isLoading = false;
-                          });
-                          
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Error joining challenge: $e'),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    child: const Text(
-                      'Join',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  Text(
+                    _getDifficultyText(challenge['difficultyLevel']),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: theme.textTheme.bodyMedium?.color,
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => _joinChallenge(challenge['id']),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+                ),
+                child: const Text('Join Challenge'),
               ),
             ],
           ),
@@ -864,10 +765,14 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
     );
   }
   
+  /// Builds the UI for a completed challenge
   Widget _buildCompletedChallengeCard(Map<String, dynamic> challenge) {
+    final theme = Theme.of(context);
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
+      color: theme.cardTheme.color,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -887,12 +792,14 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
+                  color: theme.brightness == Brightness.dark ? 
+                         AppColors.darkSurface : Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   _getIconData(challenge['iconName']),
-                  color: Colors.grey.shade700,
+                  color: theme.brightness == Brightness.dark ? 
+                         Colors.grey.shade400 : Colors.grey.shade700,
                   size: 26,
                 ),
               ),
@@ -903,102 +810,39 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                   children: [
                     Text(
                       challenge['title'],
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      challenge['description'],
                       style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade700,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: theme.textTheme.titleLarge?.color,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.check_circle,
-                                size: 16,
-                                color: AppColors.success,
-                              ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  'Completed on ${challenge['completedDate']}',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.card_giftcard,
-                              size: 16,
-                              color: AppColors.secondary,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              challenge['reward'],
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.secondary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                    const SizedBox(height: 4),
+                    Text(
+                      'Completed on ${challenge['completedDate'] ?? 'Unknown date'}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                      ),
                     ),
                   ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.brightness == Brightness.dark ?
+                         Colors.green.shade900.withOpacity(0.3) : Colors.green.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check,
+                  color: Colors.green,
+                  size: 24,
                 ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-  
-  Widget _buildDetailChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 14,
-            color: AppColors.secondary,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey.shade800,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1104,10 +948,10 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                       MaterialPageRoute(
                         builder: (context) => Scaffold(
                           appBar: AppBar(
-                            title: const Text('Leaderboard'),
+                            title: const Text('Challenges'),
                             elevation: 0,
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
+                            backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+                            foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
                             centerTitle: false,
                           ),
                           body: const Padding(
@@ -1121,15 +965,16 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 14.0),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: Theme.of(context).dividerTheme.color ?? Colors.grey.shade300),
               borderRadius: BorderRadius.circular(8.0),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
                 'Browse All Challenges',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
                 ),
               ),
             ),
@@ -1150,14 +995,15 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
   Widget _buildCompactChallengeItem(Challenge challenge, UserChallenge userChallenge) {
     final progress = userChallenge.progress / challenge.targetValue;
     final formattedChallenge = _formatChallengeForUI(challenge, userChallenge: userChallenge);
+    final theme = Theme.of(context);
     
     // Simplified item card to match mockup
     return Container(
       margin: const EdgeInsets.only(bottom: 16.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: theme.dividerTheme.color ?? Colors.transparent),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1171,7 +1017,9 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.green.shade50,
+                    color: theme.brightness == Brightness.dark 
+                           ? AppColors.darkSurface
+                           : Colors.green.shade50,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Icon(
@@ -1190,9 +1038,10 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                     children: [
                       Text(
                         formattedChallenge['title'] as String,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
+                          color: theme.textTheme.titleLarge?.color,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -1204,24 +1053,32 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
+                              color: theme.brightness == Brightness.dark 
+                                     ? Colors.grey.shade800 
+                                     : Colors.grey.shade100,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               'Ongoing',
                               style: TextStyle(
-                                color: Colors.grey.shade700,
+                                color: theme.brightness == Brightness.dark 
+                                       ? Colors.grey.shade300 
+                                       : Colors.grey.shade700,
                                 fontSize: 12,
                               ),
                             ),
                           ),
                           const SizedBox(width: 12),
-                          Icon(Icons.people, size: 16, color: Colors.grey.shade600),
+                          Icon(
+                            Icons.people, 
+                            size: 16, 
+                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             '${formattedChallenge['participants']}',
                             style: TextStyle(
-                              color: Colors.grey.shade600,
+                              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                               fontSize: 12,
                             ),
                           ),
@@ -1245,16 +1102,17 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                   children: [
                     Text(
                       '${(progress * 100).toInt()}% Complete',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
+                        color: theme.textTheme.bodyLarge?.color,
                       ),
                     ),
                     Text(
                       '${userChallenge.progress}/${challenge.targetValue}',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade700,
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.8),
                         fontSize: 14,
                       ),
                     ),
@@ -1265,7 +1123,9 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: progress,
-                    backgroundColor: Colors.grey.shade200,
+                    backgroundColor: theme.brightness == Brightness.dark 
+                                     ? Colors.grey.shade800 
+                                     : Colors.grey.shade200,
                     valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                     minHeight: 8,
                   ),
@@ -1307,5 +1167,84 @@ class _ChallengesViewState extends State<ChallengesView> with SingleTickerProvid
         ],
       ),
     );
+  }
+
+  /// Join the given challenge
+  Future<void> _joinChallenge(String challengeId) async {
+    final currentUser = _userService.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User not found. Please restart the app.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    
+    // Show loading indicator
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      // Join the challenge
+      final result = await _challengeService.startChallenge(
+        currentUser.id,
+        challengeId,
+      );
+      
+      if (result != null) {
+        _logger.info('Successfully joined challenge: $challengeId');
+        
+        // Reload challenges to update UI
+        await _loadChallenges();
+        
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Joined challenge successfully'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          
+          // Switch to active challenges tab to show the user their joined challenge
+          _tabController.animateTo(0);
+        }
+      } else {
+        _logger.warning('Failed to join challenge: $challengeId');
+        
+        // Hide loading indicator
+        setState(() {
+          _isLoading = false;
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to join challenge. Please try again.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      _logger.severe('Error joining challenge: $e');
+      
+      // Hide loading indicator
+      setState(() {
+        _isLoading = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error joining challenge: $e'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 } 

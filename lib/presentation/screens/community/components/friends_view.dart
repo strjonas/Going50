@@ -115,6 +115,8 @@ class _FriendsViewState extends State<FriendsView> {
   
   /// Build a compact friend item for the main screen
   Widget _buildCompactFriendItem(BuildContext context, UserProfile friend) {
+    final theme = Theme.of(context);
+    
     // Get time-based activity text based on createdAt timestamp
     final activityText = _getRelativeActivityTime(friend.createdAt);
     
@@ -122,9 +124,9 @@ class _FriendsViewState extends State<FriendsView> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: theme.dividerTheme.color ?? Colors.transparent),
       ),
       child: Row(
         children: [
@@ -133,14 +135,15 @@ class _FriendsViewState extends State<FriendsView> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.grey.shade200,
+              color: theme.brightness == Brightness.dark ? 
+                     AppColors.darkSurface : Colors.grey.shade200,
               shape: BoxShape.circle,
             ),
             child: Center(
               child: Text(
                 friend.name.substring(0, 1).toUpperCase(),
                 style: TextStyle(
-                  color: Colors.grey.shade700,
+                  color: theme.textTheme.bodyLarge?.color?.withOpacity(0.8),
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
                 ),
@@ -153,9 +156,10 @@ class _FriendsViewState extends State<FriendsView> {
           Expanded(
             child: Text(
               friend.name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
+                color: theme.textTheme.bodyLarge?.color,
               ),
             ),
           ),

@@ -16,6 +16,16 @@ class ProfileScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Profile'),
         centerTitle: true,
+        actions: [
+          // Add settings icon for easier access
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.of(context).pushNamed(ProfileRoutes.settings);
+            },
+            tooltip: 'Settings',
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -91,9 +101,10 @@ class ProfileScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
+          color: Theme.of(context).textTheme.titleLarge?.color,
         ),
       ),
     );
@@ -106,6 +117,8 @@ class ProfileScreen extends StatelessWidget {
     IconData icon,
     VoidCallback onPressed,
   ) {
+    final theme = Theme.of(context);
+    
     return SizedBox(
       width: 280,
       child: ElevatedButton.icon(
@@ -114,11 +127,17 @@ class ProfileScreen extends StatelessWidget {
         label: Text(label),
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
+          backgroundColor: theme.brightness == Brightness.dark 
+              ? theme.cardTheme.color
+              : Colors.white,
+          foregroundColor: theme.textTheme.bodyLarge?.color,
           elevation: 1,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
+            side: BorderSide(
+              color: theme.dividerTheme.color ?? Colors.transparent,
+              width: 1,
+            ),
           ),
         ),
       ),
