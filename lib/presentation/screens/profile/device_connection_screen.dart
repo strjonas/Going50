@@ -94,6 +94,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
               isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
@@ -114,6 +115,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                           ? Theme.of(context).colorScheme.primary
                           : Theme.of(context).colorScheme.error,
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -121,6 +124,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                         ? 'Your OBD adapter is connected and ready to use'
                         : 'Scan for devices below to connect your OBD adapter',
                     style: Theme.of(context).textTheme.bodyMedium,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
                   ),
                 ],
               ),
@@ -133,9 +138,15 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
 
   /// Builds the connection steps
   Widget _buildConnectionSteps(BuildContext context, bool isConnected) {
+    // Add MediaQuery to adapt to screen width
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360; // Adjust threshold as needed
+    
     return Stepper(
       physics: const ClampingScrollPhysics(),
       currentStep: _currentStep,
+      // Adapt margin for smaller screens
+      margin: EdgeInsets.symmetric(horizontal: isSmallScreen ? 0 : 16),
       controlsBuilder: (context, details) {
         // No controls needed
         return const SizedBox.shrink();
@@ -149,7 +160,11 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
         // Step 1: Connection Status
         Step(
           title: const Text('Connection Status'),
-          subtitle: Text(isConnected ? 'Connected' : 'Not Connected'),
+          subtitle: Text(
+            isConnected ? 'Connected' : 'Not Connected',
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
           content: ConnectionManager(
             onDisconnected: () {
               setState(() {
@@ -164,7 +179,11 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
         // Step 2: Device Scanner
         Step(
           title: const Text('Available Devices'),
-          subtitle: const Text('Select a device to connect'),
+          subtitle: const Text(
+            'Select a device to connect',
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
           content: DeviceScanner(
             onDeviceSelected: (device) {
               _connectToDevice(device);
@@ -177,7 +196,11 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
         // Step 3: Adapter Configuration
         Step(
           title: const Text('Adapter Configuration'),
-          subtitle: const Text('Advanced settings'),
+          subtitle: const Text(
+            'Advanced settings',
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
           content: const AdapterConfig(),
           isActive: _currentStep == 2,
           state: _getStepState(2, isConnected),
@@ -218,10 +241,14 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
           _currentStep = 0;
         });
         
-        // Show success snackbar
+        // Show success snackbar with overflow protection
         scaffoldMessenger.showSnackBar(
           SnackBar(
-            content: Text('Connected to ${device.name}'),
+            content: Text(
+              'Connected to ${device.name}',
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
             backgroundColor: theme.colorScheme.primary,
           ),
         );
@@ -233,8 +260,14 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
     } catch (e) {
       if (!mounted) return;
       
+      // Limit error message length to prevent overflow
+      final errorString = e.toString();
+      final limitedError = errorString.length > 100 
+          ? '${errorString.substring(0, 100)}...' 
+          : errorString;
+      
       setState(() {
-        _errorMessage = 'Connection error: $e';
+        _errorMessage = 'Connection error: $limitedError';
       });
     }
   }

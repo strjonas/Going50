@@ -134,6 +134,7 @@ class StatisticsSummary extends StatelessWidget {
               fontSize: 16,
               color: theme.textTheme.titleLarge?.color,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         const SizedBox(height: 8),
@@ -146,35 +147,53 @@ class StatisticsSummary extends StatelessWidget {
   Widget _buildStatisticItem(BuildContext context, IconData icon, String value, String label) {
     final theme = Theme.of(context);
     
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: Theme.of(context).primaryColor,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth - 56;
+        final labelWidth = availableWidth * 0.6;
+        final valueWidth = availableWidth * 0.4;
+        
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: Theme.of(context).primaryColor,
               ),
-            ),
+              const SizedBox(width: 16),
+              Container(
+                width: labelWidth,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+              Container(
+                width: valueWidth,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: theme.textTheme.bodyLarge?.color,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  textAlign: TextAlign.right,
+                ),
+              ),
+            ],
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: theme.textTheme.bodyLarge?.color,
-            ),
-          ),
-        ],
-      ),
+        );
+      }
     );
   }
   

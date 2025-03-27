@@ -67,6 +67,7 @@ class RecentTripCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Date row with eco-score
               Row(
                 children: [
                   // Date and time
@@ -79,6 +80,8 @@ class RecentTripCard extends StatelessWidget {
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -86,125 +89,155 @@ class RecentTripCard extends StatelessWidget {
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: AppColors.textSecondary,
                           ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ],
                     ),
                   ),
                   
-                  // Eco-score badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: ecoScoreColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: ecoScoreColor,
-                        width: 1,
+                  // Eco-score badge - Wrap in FittedBox to ensure it can shrink if needed
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: ecoScoreColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: ecoScoreColor,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.eco,
+                            color: ecoScoreColor,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            ecoScore.toInt().toString(),
+                            style: TextStyle(
+                              color: ecoScoreColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 8),
+              
+              // Trip details - Make more responsive
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  // Use a more adaptive approach based on available width
+                  return constraints.maxWidth < 300
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDetailRow(theme, Icons.route, distanceText),
+                            const SizedBox(height: 4),
+                            _buildDetailRow(theme, Icons.timer, durationText),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            // Distance
+                            Expanded(
+                              child: _buildDetailRow(theme, Icons.route, distanceText),
+                            ),
+                            
+                            // Duration
+                            Expanded(
+                              child: _buildDetailRow(theme, Icons.timer, durationText),
+                            ),
+                          ],
+                        );
+                },
+              ),
+              
+              const SizedBox(height: 8),
+              
+              // Savings section - Make more responsive
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  // Use a more adaptive approach based on available width
+                  final isNarrow = constraints.maxWidth < 300;
+                  
+                  if (isNarrow) {
+                    // For smaller screens, stack vertically
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.eco,
-                          color: ecoScoreColor,
-                          size: 14,
+                        _buildSavingsItem(
+                          context,
+                          icon: Icons.local_gas_station,
+                          label: 'Fuel',
+                          value: '${fuelSavedLiters.toStringAsFixed(1)}L',
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          ecoScore.toInt().toString(),
-                          style: TextStyle(
-                            color: ecoScoreColor,
-                            fontWeight: FontWeight.bold,
+                        const SizedBox(height: 4),
+                        _buildSavingsItem(
+                          context,
+                          icon: Icons.cloud,
+                          label: 'CO₂',
+                          value: '${co2SavedKg.toStringAsFixed(1)}kg',
+                        ),
+                        const SizedBox(height: 4),
+                        _buildSavingsItem(
+                          context,
+                          icon: Icons.attach_money,
+                          label: 'Money',
+                          value: FormatterUtils.formatCurrency(moneySaved),
+                        ),
+                      ],
+                    );
+                  } else {
+                    // For larger screens, use row layout
+                    return Row(
+                      children: [
+                        // Fuel saved
+                        Expanded(
+                          child: _buildSavingsItem(
+                            context,
+                            icon: Icons.local_gas_station,
+                            label: 'Fuel',
+                            value: '${fuelSavedLiters.toStringAsFixed(1)}L',
+                          ),
+                        ),
+                        
+                        // CO2 saved
+                        Expanded(
+                          child: _buildSavingsItem(
+                            context,
+                            icon: Icons.cloud,
+                            label: 'CO₂',
+                            value: '${co2SavedKg.toStringAsFixed(1)}kg',
+                          ),
+                        ),
+                        
+                        // Money saved
+                        Expanded(
+                          child: _buildSavingsItem(
+                            context,
+                            icon: Icons.attach_money,
+                            label: 'Money',
+                            value: FormatterUtils.formatCurrency(moneySaved),
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 8),
-              
-              // Trip details
-              Row(
-                children: [
-                  // Distance
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.route,
-                          size: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          distanceText,
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Duration
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.timer,
-                          size: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          durationText,
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 8),
-              
-              // Savings section
-              Row(
-                children: [
-                  // Fuel saved
-                  Expanded(
-                    child: _buildSavingsItem(
-                      context,
-                      icon: Icons.local_gas_station,
-                      label: 'Fuel',
-                      value: '${fuelSavedLiters.toStringAsFixed(1)}L',
-                    ),
-                  ),
-                  
-                  // CO2 saved
-                  Expanded(
-                    child: _buildSavingsItem(
-                      context,
-                      icon: Icons.cloud,
-                      label: 'CO₂',
-                      value: '${co2SavedKg.toStringAsFixed(1)}kg',
-                    ),
-                  ),
-                  
-                  // Money saved
-                  Expanded(
-                    child: _buildSavingsItem(
-                      context,
-                      icon: Icons.attach_money,
-                      label: 'Money',
-                      value: FormatterUtils.formatCurrency(moneySaved),
-                    ),
-                  ),
-                ],
+                    );
+                  }
+                },
               ),
             ],
           ),
@@ -213,6 +246,28 @@ class RecentTripCard extends StatelessWidget {
     );
   }
   
+  /// Helper method to build a detail row with icon and text
+  Widget _buildDetailRow(ThemeData theme, IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 16,
+          color: AppColors.textSecondary,
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            text,
+            style: theme.textTheme.bodyMedium,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+      ],
+    );
+  }
+
   /// Calculates an eco-score based on trip data
   double _calculateEcoScore(Trip trip) {
     // Start with a perfect score and subtract for events
@@ -278,6 +333,7 @@ class RecentTripCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
@@ -285,10 +341,14 @@ class RecentTripCard extends StatelessWidget {
               color: AppColors.textSecondary,
             ),
             const SizedBox(width: 4),
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
+            Flexible(
+              child: Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
           ],
@@ -300,6 +360,8 @@ class RecentTripCard extends StatelessWidget {
             fontWeight: FontWeight.bold,
             color: AppColors.secondary,
           ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
       ],
     );
