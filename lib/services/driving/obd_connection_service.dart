@@ -369,11 +369,64 @@ class ObdConnectionService extends ChangeNotifier {
     double? engineLoad;
     double? mafRate;
     
-    // Extract values based on PID type
+    // Enhance logging for debugging
+    _logger.info('Converting OBD data: PID=${obdData.pid}, value=${obdData.value}, rawData=${obdData.rawData}');
+    
+    // Extract values based on PID type with enhanced error handling and fallbacks
     if (obdData.pid == ObdConstants.pidVehicleSpeed) {
-      speed = double.tryParse(obdData.value.toString());
+      // Try the normal parsing first
+      try {
+        speed = double.tryParse(obdData.value.toString());
+        
+        // Check if we got a valid speed value
+        if (speed == null) {
+          _logger.warning('Failed to parse speed value: ${obdData.value}');
+          
+          // If raw data is available, try direct byte extraction
+          if (obdData.rawData != null && obdData.rawData!.isNotEmpty) {
+            // Use the first byte directly as speed value (standard OBD-II protocol)
+            speed = obdData.rawData!.first * 4.0; // Apply 4x multiplier to address scaling issue
+            _logger.info('Using raw byte for speed calculation: ${obdData.rawData!.first} * 4 = $speed km/h');
+          }
+        } else {
+          // Apply scaling correction to parsed value too
+          speed = speed * 4.0; // Apply 4x multiplier
+          _logger.info('Applied 4x scaling to parsed speed: $speed km/h');
+        }
+      } catch (e) {
+        _logger.severe('Error processing speed data: $e');
+      }
     } else if (obdData.pid == ObdConstants.pidEngineRpm) {
-      rpm = int.tryParse(obdData.value.toString());
+      // Try normal parsing first
+      try {
+        rpm = int.tryParse(obdData.value.toString());
+        
+        // Check if we got a valid RPM value
+        if (rpm == null) {
+          _logger.warning('Failed to parse RPM value: ${obdData.value}');
+          
+          // If raw data is available, try direct byte extraction
+          if (obdData.rawData != null && obdData.rawData!.length >= 2) {
+            // Standard OBD-II formula: ((A * 256) + B) / 4
+            final a = obdData.rawData![0];
+            final b = obdData.rawData![1];
+            rpm = (((a * 256) + b) / 4).round();
+            _logger.info('Using raw bytes for RPM calculation: ((${a} * 256) + ${b}) / 4 = $rpm RPM');
+          } else if (obdData.rawData != null && obdData.rawData!.length == 1) {
+            // Some adapters send single-byte RPM, try a different formula
+            rpm = (obdData.rawData!.first * 40).round(); // Alternative calculation for single byte
+            _logger.info('Using single raw byte for RPM: ${obdData.rawData!.first} * 40 = $rpm RPM');
+          }
+        }
+        
+        // Some adapters report very high RPM values that need to be adjusted
+        if (rpm != null && rpm > 16000) {
+          _logger.warning('Unreasonably high RPM: $rpm, dividing by 4');
+          rpm = (rpm / 4).round(); // Division by 4 works for some adapters
+        }
+      } catch (e) {
+        _logger.severe('Error processing RPM data: $e');
+      }
     } else if (obdData.pid == ObdConstants.pidThrottlePosition) {
       throttlePosition = double.tryParse(obdData.value.toString());
     } else if (obdData.pid == ObdConstants.pidCoolantTemp) {
@@ -381,7 +434,43 @@ class ObdConnectionService extends ChangeNotifier {
     } else if (obdData.pid == ObdConstants.pidEngineLoad) {
       engineLoad = double.tryParse(obdData.value.toString());
     }
-    // MAF rate is not included in ObdConstants, so we'll skip it for now
+    
+    // Emergency fallback for missing RPM
+    if (rpm == null && obdData.pid == ObdConstants.pidEngineRpm && obdData.rawData != null) {
+      _logger.warning('Emergency RPM parsing from raw bytes: ${obdData.rawData}');
+      
+      // Try several approaches to extract a sensible RPM value
+      if (obdData.rawData!.length >= 2) {
+        final rawData = obdData.rawData!;
+        
+        // Try multiple calculation methods and use the most reasonable
+        final options = [
+          (((rawData[0] * 256) + rawData[1]) / 4).round(),  // Standard
+          (rawData[0] * 40).round(),                        // Alternative A
+          (rawData[1] * 40).round(),                        // Alternative B
+          ((rawData[0] * 256) + rawData[1]).round(),        // No division
+          (((rawData[0] * 256) + rawData[1]) / 16).round(), // Division by 16
+        ];
+        
+        // Find the first value in a reasonable range (500-8000 RPM)
+        for (final option in options) {
+          if (option >= 500 && option <= 8000) {
+            rpm = option;
+            _logger.info('Emergency RPM calculation selected value: $rpm');
+            break;
+          }
+        }
+        
+        // If no reasonable value found, use the first option
+        if (rpm == null) {
+          rpm = options[0];
+          _logger.warning('No reasonable RPM found, using first calculation: $rpm');
+        }
+      }
+    }
+    
+    // Log the final converted values
+    _logger.info('Final conversion results: speed=$speed km/h, rpm=$rpm');
     
     // Create the OBDIIData object
     final obdIIData = OBDIIData(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:going50/services/driving/obd_connection_service.dart';
 import 'package:going50/services/service_locator.dart';
+import 'package:going50/obd_lib/test/obd_field_test.dart';
+import 'package:going50/obd_lib/obd_service.dart';
 
 /// A widget that allows configuration of the OBD adapter settings.
 class AdapterConfig extends StatefulWidget {
@@ -16,12 +18,14 @@ class _AdapterConfigState extends State<AdapterConfig> {
   List<Map<String, String>> _availableProfiles = [];
   String? _selectedProfileId;
   bool _isAutoDetectionEnabled = true;
+  bool _isAdapterConnected = false;
 
   @override
   void initState() {
     super.initState();
     _obdService = serviceLocator<ObdConnectionService>();
     _loadProfiles();
+    _checkAdapterConnection();
   }
 
   /// Loads the available adapter profiles
@@ -39,6 +43,13 @@ class _AdapterConfigState extends State<AdapterConfig> {
     }
   }
 
+  /// Check if an adapter is currently connected
+  void _checkAdapterConnection() {
+    setState(() {
+      _isAdapterConnected = _obdService.isConnected;
+    });
+  }
+
   /// Sets the selected adapter profile
   void _setProfile(String? profileId) {
     if (profileId == null) {
@@ -54,6 +65,29 @@ class _AdapterConfigState extends State<AdapterConfig> {
         _isAutoDetectionEnabled = false;
       });
     }
+  }
+
+  /// Navigate to adapter test screen
+  void _navigateToAdapterTest() {
+    final obdService = serviceLocator<ObdService>();
+    final deviceId = _obdService.currentDeviceId;
+    
+    if (deviceId == null || deviceId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No adapter connected. Please connect an adapter first.')),
+      );
+      return;
+    }
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ObdFieldTestScreen(
+          obdService: obdService,
+          deviceId: deviceId,
+        ),
+      ),
+    );
   }
 
   @override
@@ -109,6 +143,46 @@ class _AdapterConfigState extends State<AdapterConfig> {
             child: Text(
               'No profiles available. Connect an OBD device first to see available profiles.',
               style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ),
+          
+        // Add a divider and test adapter section
+        const Divider(height: 32),
+        
+        // Adapter test section
+        Text(
+          'Adapter Testing',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        
+        const SizedBox(height: 12),
+        
+        Text(
+          'Test your OBD adapter connection quality, performance, and reliability.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        
+        const SizedBox(height: 16),
+        
+        ElevatedButton.icon(
+          onPressed: _isAdapterConnected ? _navigateToAdapterTest : null,
+          icon: const Icon(Icons.speed),
+          label: const Text('TEST ADAPTER PERFORMANCE'),
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size.fromHeight(44),
+          ),
+        ),
+        
+        if (!_isAdapterConnected)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text(
+              'Connect an OBD adapter first to run tests.',
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: Colors.grey,
+                fontSize: 12,
+              ),
             ),
           ),
       ],

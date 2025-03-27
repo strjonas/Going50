@@ -270,7 +270,7 @@ class Elm327Protocol implements ObdProtocol {
           if (data != null) {
             // Only add valid data to the stream
             _dataStreamController.add(data);
-                    }
+          }
         }
         
         _currentCommand = null;
@@ -381,6 +381,11 @@ class Elm327Protocol implements ObdProtocol {
   
   /// Process the response to get OBD data with improved validation
   ObdData? _processResponseWithValidation(String response, ObdCommand command) {
+    // Add diagnostic logging for critical PIDs (ADDED)
+    if (command.pid == ObdConstants.pidVehicleSpeed || command.pid == ObdConstants.pidEngineRpm) {
+      _logDetailedDiagnostics(response, command);
+    }
+    
     // Process the response to get OBD data
     var data = responseProcessor.processResponse(response, command);
     
@@ -429,15 +434,17 @@ class Elm327Protocol implements ObdProtocol {
   /// 
   /// Returns null if the reading is determined to be invalid
   ObdData? _validateRpmReading(ObdData data, String rawResponse) {
-    // Extract the RPM value
+    // UPDATED: Since we're having OBD issues, this function is modified to pass through
+    // all RPM values without restrictive validation to see the raw data coming from the adapter
+    
+    // Log the raw RPM data for debugging
+    _logger.info('Raw RPM data: value=${data.value}, rawBytes=${data.rawData}');
+    
+    // Extract the RPM value for logging only
     dynamic rpmValue = data.value;
+    int rpm = 0;
     
-    if (rpmValue == null) {
-      return null;
-    }
-    
-    // Convert to integer for easier comparison
-    int rpm;
+    // Convert to integer just for logging
     if (rpmValue is int) {
       rpm = rpmValue;
     } else if (rpmValue is double) {
@@ -446,76 +453,29 @@ class Elm327Protocol implements ObdProtocol {
       try {
         rpm = int.parse(rpmValue);
       } catch (e) {
-        _logger.warning('Invalid RPM value format: $rpmValue');
-        return null;
-      }
-    } else {
-      _logger.warning('Unknown RPM value type: ${rpmValue.runtimeType}');
-      return null;
-    }
-    
-    // Check for suspicious RPM values
-    
-    // 1. Check for the known "59 RPM" issue in premium adapters when engine is off
-    if (rpm == 59) {
-      _logger.info('Detected suspicious 59 RPM reading, likely false reading');
-      
-      // Perform additional validation
-      if (rawResponse.toLowerCase().contains('41 0c 00 3b') || // Hex for 59 RPM
-          rawResponse.toLowerCase().contains('410c003b')) {
-        _logger.warning('Ignoring likely false 59 RPM reading from adapter');
-        return null; // Ignore this reading
+        _logger.warning('Non-integer RPM value: $rpmValue');
       }
     }
     
-    // 2. Check for unrealistically low RPM values when engine would be running
-    if (rpm > 0 && rpm < 20) {
-      _logger.info('Detected suspiciously low RPM value: $rpm, likely false reading');
-      
-      // Most engines can't idle below 400-500 RPM, so very low values are suspicious
-      // But we allow zero to represent engine off
-      if (rpm != 0) {
-        _logger.warning('Ignoring unrealistically low RPM reading: $rpm');
-        return null; // Ignore this reading
-      }
-    }
+    // Log the raw response for debugging
+    _logger.info('Raw RPM response: "$rawResponse" -> $rpm RPM');
     
-    // 3. Check for unusually high values (mechanical impossibility for most engines)
-    if (rpm > 15000) {
-      _logger.warning('Ignoring unrealistically high RPM reading: $rpm');
-      return null;
-    }
-    
-    // Check if the RPM is stable at a non-zero value that seems reasonable
-    if (rpm >= 400 && rpm <= 6000) {
-      // This is likely a valid reading
-      // Create a new instance with current timestamp to ensure freshness
-      return data.copyWith(timestamp: DateTime.now());
-    }
-    
-    // No validation issues found, return the original data
-    return data;
+    // Return data without validation
+    return data.copyWith(timestamp: DateTime.now());
   }
   
   /// Validate speed readings to eliminate erroneous values and reduce lag
   /// 
-  /// This enhanced method applies more sophisticated rules:
-  /// 1. Checks for impossibly high values (physics constraints)
-  /// 2. Verifies changes are within reasonable bounds
-  /// 3. Uses historical data to detect inconsistencies
-  /// 4. Applies smoothing for minor fluctuations to reduce UI jitter
-  /// 
-  /// Returns null if the reading is determined to be invalid
+  /// UPDATED: Made less strict to troubleshoot issues
   ObdData? _validateSpeedReading(ObdData data, String rawResponse) {
-    // Extract the speed value
+    // Log the raw speed data for debugging
+    _logger.info('Raw speed data: value=${data.value}, rawBytes=${data.rawData}');
+    
+    // Extract the speed value for logging only
     dynamic speedValue = data.value;
+    int speed = 0;
     
-    if (speedValue == null) {
-      return null;
-    }
-    
-    // Convert to integer for easier comparison
-    int speed;
+    // Convert to integer just for logging
     if (speedValue is int) {
       speed = speedValue;
     } else if (speedValue is double) {
@@ -524,85 +484,14 @@ class Elm327Protocol implements ObdProtocol {
       try {
         speed = int.parse(speedValue);
       } catch (e) {
-        _logger.warning('Invalid speed value format: $speedValue');
-        return null;
-      }
-    } else {
-      _logger.warning('Unknown speed value type: ${speedValue.runtimeType}');
-      return null;
-    }
-    
-    // Check for suspiciously high speed values (physics constraints)
-    // Most consumer vehicles max out around 250-300 km/h
-    if (speed > 300) {
-      _logger.warning('Ignoring unrealistically high speed reading: $speed km/h');
-      return null;
-    }
-    
-    // Enhanced validation using historical data (if available)
-    if (_lastSpeedValues.isNotEmpty) {
-      final lastSpeed = _lastSpeedValues.last;
-      
-      // Check for physically impossible acceleration/deceleration
-      // A car typically can't change speed by more than ~15 km/h in under a second
-      // This helps filter out adapter glitches and response lag
-      final speedDiff = (speed - lastSpeed).abs();
-      
-      // Calculate time since last speed update - defaulting to 1 second if unknown
-      final now = DateTime.now();
-      final lastTime = _lastResponseTimes['010D'] ?? now.subtract(Duration(seconds: 1));
-      final timeDiffSeconds = now.difference(lastTime).inMilliseconds / 1000.0;
-      
-      // Calculate the rate of speed change in km/h per second
-      final speedChangeRate = timeDiffSeconds > 0 ? speedDiff / timeDiffSeconds : speedDiff;
-      
-      // Maximum plausible speed change based on vehicle physics
-      // Allow higher values for lower speeds (to account for quick starts)
-      final maxPlausibleChange = lastSpeed < 20 ? 15.0 : 10.0;
-      
-      if (speedChangeRate > maxPlausibleChange) {
-        _logger.warning('Suspiciously rapid speed change: $lastSpeed → $speed km/h '
-                      'in ${timeDiffSeconds.toStringAsFixed(2)}s (${speedChangeRate.toStringAsFixed(1)} km/h/s)');
-        
-        // Special case: If going from 0 to non-zero, allow it (initial acceleration)
-        if (lastSpeed != 0 || speed == 0) {
-          // If the current value is closer to the second-last value, it might be more accurate
-          if (_lastSpeedValues.length >= 2) {
-            final secondLastSpeed = _lastSpeedValues[_lastSpeedValues.length - 2];
-            
-            // If new speed is closer to historical values, it might be correct and the 
-            // most recent value was actually the error
-            bool newValueMoreLikely = false;
-            
-            // Check if the new value is similar to values from 2-3 readings ago
-            if (_lastSpeedValues.length >= 3) {
-              final thirdLastSpeed = _lastSpeedValues[_lastSpeedValues.length - 3];
-              
-              // If new speed is within 15% of older readings, it might be more likely correct
-              if ((speed - secondLastSpeed).abs() < maxPlausibleChange * 1.5 || 
-                  (speed - thirdLastSpeed).abs() < maxPlausibleChange * 2) {
-                newValueMoreLikely = true;
-              }
-            }
-            
-            if (!newValueMoreLikely) {
-              // Use the most recent stable value instead
-              _logger.fine('Using most recent stable speed value: $lastSpeed km/h instead of $speed km/h');
-              return data.copyWith(value: lastSpeed, timestamp: DateTime.now());
-            }
-          } else {
-            // Just one history item, use it if the change is too extreme
-            _logger.fine('Using last known reliable speed: $lastSpeed km/h instead of $speed km/h');
-            return data.copyWith(value: lastSpeed, timestamp: DateTime.now());
-          }
-        }
+        _logger.warning('Non-integer speed value: $speedValue');
       }
     }
     
-    // Log the validated value
-    _logger.fine('Validated speed reading: $speed km/h');
+    // Log the raw response for debugging
+    _logger.info('Raw speed response: "$rawResponse" -> $speed km/h');
     
-    // Always return a fresh instance with updated timestamp
+    // Return data without validation
     return data.copyWith(timestamp: DateTime.now());
   }
   
@@ -1132,5 +1021,182 @@ class Elm327Protocol implements ObdProtocol {
     
     // Close stream controller
     _dataStreamController.close();
+  }
+
+  /// Log detailed diagnostics for critical OBD data
+  void _logDetailedDiagnostics(String response, ObdCommand command) {
+    _logger.info('📊 DETAILED OBD DIAGNOSTICS 📊');
+    _logger.info('PID: ${command.pid} (${command.name})');
+    _logger.info('RAW RESPONSE: "${response}"');
+    
+    // Analyze the response format
+    final cleanedResponse = response.replaceAll(RegExp(r'[\r\n>]'), ' ')
+                                   .replaceAll(RegExp(r'\s+'), ' ')
+                                   .trim()
+                                   .toUpperCase();
+                                   
+    _logger.info('CLEANED: "$cleanedResponse"');
+    
+    // Try to parse as hex
+    try {
+      final parts = cleanedResponse.split(' ');
+      _logger.info('PARTS: $parts');
+      
+      // Find the header pattern based on the command
+      String expectedHeader;
+      if (command.mode == '01') {
+        expectedHeader = '41${command.pid.toUpperCase()}';
+      } else {
+        expectedHeader = '${(int.parse(command.mode, radix: 16) + 40).toRadixString(16).padLeft(2, '0').toUpperCase()}${command.pid.toUpperCase()}';
+      }
+      
+      _logger.info('EXPECTED HEADER: $expectedHeader');
+      
+      // Look for the header in the response
+      bool headerFound = false;
+      String? dataSection;
+      int dataStartIndex = -1;
+      
+      // Case 1: Check for the header as a complete part
+      for (int i = 0; i < parts.length; i++) {
+        if (parts[i] == expectedHeader || parts[i].startsWith(expectedHeader)) {
+          headerFound = true;
+          if (parts[i] == expectedHeader && i < parts.length - 1) {
+            dataStartIndex = i + 1;
+            dataSection = parts.sublist(dataStartIndex).join(' ');
+          } else if (parts[i].startsWith(expectedHeader)) {
+            dataSection = parts[i].substring(expectedHeader.length);
+            if (dataSection.isEmpty && i < parts.length - 1) {
+              dataStartIndex = i + 1;
+              dataSection = parts.sublist(dataStartIndex).join(' ');
+            }
+          }
+          break;
+        }
+      }
+      
+      // Case 2: Check for a split header across parts
+      if (!headerFound && parts.length >= 2) {
+        for (int i = 0; i < parts.length - 1; i++) {
+          if (parts[i] == expectedHeader.substring(0, 2) && 
+              parts[i+1].startsWith(expectedHeader.substring(2))) {
+            headerFound = true;
+            dataStartIndex = i + 1;
+            String remainder = parts[i+1].substring(expectedHeader.substring(2).length);
+            if (remainder.isEmpty) {
+              dataStartIndex = i + 2;
+              dataSection = parts.sublist(dataStartIndex).join(' ');
+            } else {
+              dataSection = remainder + (i+2 < parts.length ? ' ' + parts.sublist(i+2).join(' ') : '');
+            }
+            break;
+          }
+        }
+      }
+      
+      // Case 3: Check for combined string with header inside
+      if (!headerFound) {
+        final combined = parts.join('');
+        final headerIndex = combined.indexOf(expectedHeader);
+        if (headerIndex >= 0) {
+          headerFound = true;
+          dataSection = combined.substring(headerIndex + expectedHeader.length);
+        }
+      }
+      
+      _logger.info('HEADER FOUND: $headerFound');
+      _logger.info('DATA SECTION: ${dataSection ?? "None"}');
+      
+      // Extra analysis for specific PIDs
+      if (command.pid == ObdConstants.pidVehicleSpeed) {
+        _logger.info('SPEED ANALYSIS:');
+        if (dataSection != null && dataSection.isNotEmpty) {
+          try {
+            // Standard speed calculation: 1st byte * 1 km/h
+            int speedByte = -1;
+            if (dataSection.length == 2) {
+              speedByte = int.parse(dataSection, radix: 16);
+            } else {
+              // Try to extract the first two characters as a speed byte
+              final match = RegExp(r'([0-9A-F]{2})').firstMatch(dataSection);
+              if (match != null) {
+                speedByte = int.parse(match.group(1)!, radix: 16);
+              }
+            }
+            
+            if (speedByte >= 0) {
+              _logger.info('SPEED BYTE: $speedByte (hex: 0x${speedByte.toRadixString(16).padLeft(2, '0')})');
+              
+              // Calculate speed with different multipliers to see what might work
+              _logger.info('STANDARD SPEED: ${speedByte * 1} km/h');
+              _logger.info('MULTIPLIER 2X: ${speedByte * 2} km/h');
+              _logger.info('MULTIPLIER 4X: ${speedByte * 4} km/h');
+              _logger.info('MULTIPLIER 0.5X: ${speedByte * 0.5} km/h');
+            }
+          } catch (e) {
+            _logger.info('ERROR PARSING SPEED BYTE: $e');
+          }
+        }
+      } else if (command.pid == ObdConstants.pidEngineRpm) {
+        _logger.info('RPM ANALYSIS:');
+        if (dataSection != null && dataSection.isNotEmpty) {
+          try {
+            List<int> rpmBytes = [];
+            
+            // Try to extract 1 or 2 bytes for RPM
+            // Standard format expects 2 bytes
+            final matches = RegExp(r'([0-9A-F]{2})').allMatches(dataSection);
+            for (final match in matches) {
+              if (rpmBytes.length < 2) {
+                rpmBytes.add(int.parse(match.group(1)!, radix: 16));
+              }
+            }
+            
+            if (rpmBytes.isNotEmpty) {
+              _logger.info('RPM BYTES: $rpmBytes');
+              
+              // Calculate RPM with different formulas
+              if (rpmBytes.length >= 2) {
+                // Standard formula: ((A * 256) + B) / 4
+                final standardRpm = ((rpmBytes[0] * 256) + rpmBytes[1]) / 4;
+                _logger.info('STANDARD FORMULA RPM: $standardRpm');
+                
+                // Alternative formula 1: No division
+                final alt1 = (rpmBytes[0] * 256) + rpmBytes[1];
+                _logger.info('ALT 1 (NO DIVISION): $alt1');
+                
+                // Alternative formula 2: Division by 16
+                final alt2 = ((rpmBytes[0] * 256) + rpmBytes[1]) / 16;
+                _logger.info('ALT 2 (DIV BY 16): $alt2');
+                
+                // Alternative formula 3: Only use A-byte with multiplier
+                final alt3 = rpmBytes[0] * 40;
+                _logger.info('ALT 3 (A*40): $alt3');
+                
+                // Alternative formula 4: Only use B-byte with multiplier
+                final alt4 = rpmBytes[1] * 40;
+                _logger.info('ALT 4 (B*40): $alt4');
+              } else if (rpmBytes.length == 1) {
+                // Single byte alternative formulas
+                final singleByteA = rpmBytes[0] * 40;
+                _logger.info('SINGLE BYTE *40: $singleByteA');
+                
+                final singleByteB = rpmBytes[0] * 100;
+                _logger.info('SINGLE BYTE *100: $singleByteB');
+                
+                final singleByteC = rpmBytes[0] * 25;
+                _logger.info('SINGLE BYTE *25: $singleByteC');
+              }
+            }
+          } catch (e) {
+            _logger.info('ERROR PARSING RPM BYTES: $e');
+          }
+        }
+      }
+    } catch (e) {
+      _logger.info('DIAGNOSTIC PARSING ERROR: $e');
+    }
+    
+    _logger.info('📊 END DIAGNOSTICS 📊');
   }
 } 

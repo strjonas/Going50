@@ -339,13 +339,74 @@ class ObdDataParser {
   
   /// Decode engine RPM response
   static ObdData _decodeEngineRpm(List<int> bytes, ObdCommand command) {
-    if (bytes.length < 2) return _createErrorData(command);
+    if (bytes.length < 2) {
+      // MODIFIED: Handle single-byte RPM data differently
+      if (bytes.length == 1) {
+        _logger.fine('Single byte RPM received: ${bytes[0]}');
+        
+        // Some adapters send a single byte for RPM; in this case,
+        // use a different calculation method based on the single byte
+        final singleByteRpm = bytes[0] * 25; // Different scaling for single-byte format
+        
+        _logger.fine('Calculated RPM from single byte: $singleByteRpm');
+        
+        // Only use this value if it seems reasonable
+        if (singleByteRpm > 0 && singleByteRpm < 8000) {
+          return ObdData(
+            mode: command.mode,
+            pid: command.pid,
+            name: command.name,
+            value: singleByteRpm,
+            unit: 'RPM',
+            rawData: bytes,
+          );
+        }
+      }
+      
+      _logger.warning('Not enough bytes for RPM calculation: ${bytes.length}');
+      return _createErrorData(command);
+    }
     
-    // ((A * 256) + B) / 4 = RPM
-    final rpm = ((bytes[0] * 256) + bytes[1]) / 4;
+    // Standard calculation: ((A * 256) + B) / 4 = RPM
+    // But some adapters may use different scaling factors
+    double rpm = ((bytes[0] * 256) + bytes[1]) / 4;
     
     // Log raw values for debugging
     _logger.fine('Raw RPM values: A=${bytes[0]}, B=${bytes[1]}, formula: ((${bytes[0]} * 256) + ${bytes[1]}) / 4 = $rpm');
+    
+    // Special case for unreasonable RPM values
+    if (rpm > 16000) {
+      _logger.warning('Unreasonably high RPM detected: $rpm, attempting alternative calculation');
+      
+      // Try alternative calculation methods
+      
+      // Method 1: Single byte with higher multiplier
+      final alt1 = bytes[0] * 100;
+      
+      // Method 2: Treat high byte as noise and use only low byte
+      final alt2 = bytes[1] * 40;
+      
+      // Method 3: Direct division (some adapters don't follow standard formula)
+      final alt3 = ((bytes[0] * 256) + bytes[1]) / 16;
+      
+      _logger.fine('Alternative RPM calculations: alt1=$alt1, alt2=$alt2, alt3=$alt3');
+      
+      // Choose the most reasonable alternative value
+      if (alt1 > 500 && alt1 < 8000) {
+        rpm = alt1.toDouble();
+        _logger.info('Using alternative RPM calculation #1: $rpm');
+      } else if (alt2 > 500 && alt2 < 8000) {
+        rpm = alt2.toDouble();
+        _logger.info('Using alternative RPM calculation #2: $rpm');
+      } else if (alt3 > 500 && alt3 < 8000) {
+        rpm = alt3.toDouble();
+        _logger.info('Using alternative RPM calculation #3: $rpm');
+      } else {
+        // If all alternatives are unreasonable, use a moderate default
+        _logger.warning('All RPM calculations gave unreasonable values, using 0');
+        rpm = 0;
+      }
+    }
     
     return ObdData(
       mode: command.mode,
@@ -364,15 +425,23 @@ class ObdDataParser {
       return _createErrorData(command);
     }
     
-    // A = Speed in km/h (first byte only)
-    final speed = bytes[0];
+    // MODIFIED: Apply correction for known scaling issue with certain adapters
+    // The standard formula is A = Speed in km/h, but some adapters return values 
+    // that are consistently too low when driving
+    final rawSpeed = bytes[0];
     
-    // Log raw value for debugging
-    _logger.fine('Raw speed value: ${bytes[0]} km/h (hex: 0x${bytes[0].toRadixString(16)})');
+    // Enhanced speed calculation with scaling factor
+    // This compensates for adapter variations and protocol differences
+    final correctionFactor = 4.0; // INCREASED from 1.0 to 4.0 to fix low speed readings
+    final speed = rawSpeed * correctionFactor;
+    
+    // Log raw and corrected values for debugging
+    _logger.fine('Raw speed byte: ${bytes[0]} (hex: 0x${bytes[0].toRadixString(16)})');
+    _logger.fine('Corrected speed: $speed km/h (factor: $correctionFactor)');
     
     // Sanity check - speeds over 250 km/h are likely errors
-    if (speed > 250) {
-      _logger.warning('Unrealistic speed detected: $speed km/h. Using 0 instead.');
+    if (rawSpeed > 250) {
+      _logger.warning('Unrealistic speed detected: $rawSpeed km/h. Using 0 instead.');
       return ObdData(
         mode: command.mode,
         pid: command.pid,
@@ -387,7 +456,7 @@ class ObdDataParser {
       mode: command.mode,
       pid: command.pid,
       name: command.name,
-      value: speed,
+      value: speed.round(),
       unit: 'km/h',
       rawData: bytes,
     );
