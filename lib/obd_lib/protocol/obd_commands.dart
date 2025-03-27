@@ -40,6 +40,12 @@ class ObdCommands {
     name: 'Control Module Voltage',
     description: 'Control module voltage',
   );
+
+  static final fuelRate = ObdCommand.mode01(
+    ObdConstants.pidFuelRate,
+    name: 'Fuel Rate',
+    description: 'Fuel rate in L/h',
+  );
   
   /// ATZ - Reset the ELM327
   static final reset = ObdCommand(
@@ -104,6 +110,7 @@ class ObdCommands {
     engineRpm,
     vehicleSpeed,
     controlModuleVoltage,
+    fuelRate,
   ];
   
   /// Get a list of initialization commands in the correct order
