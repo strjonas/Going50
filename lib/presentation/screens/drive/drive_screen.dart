@@ -258,10 +258,9 @@ class _DriveScreenState extends State<DriveScreen> {
             RecentTripCard(
               trip: mostRecentTrip,
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Trip details not yet implemented'),
-                  ),
+                Navigator.of(context).pushNamed(
+                  InsightsRoutes.tripDetail,
+                  arguments: mostRecentTrip.id,
                 );
               },
             ),
