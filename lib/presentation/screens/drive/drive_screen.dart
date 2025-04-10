@@ -241,24 +241,23 @@ class _DriveScreenState extends State<DriveScreen> {
     if (isFirstUse) {
       return _buildFirstUseCard(context);
     } else if (mostRecentTrip != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8),
-            child: Text(
-              'Recent Trip',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+      return SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Recent Trip',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: RecentTripCard(
+            RecentTripCard(
               trip: mostRecentTrip,
               onTap: () {
-                // TODO: Navigate to trip details
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Trip details not yet implemented'),
@@ -266,18 +265,18 @@ class _DriveScreenState extends State<DriveScreen> {
                 );
               },
             ),
-          ),
-          const SizedBox(height: 8),
-          Center(
-            child: Text(
-              'Pull for more',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                'Pull for more',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       );
     } else {
       return const Center(
