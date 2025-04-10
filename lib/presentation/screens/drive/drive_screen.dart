@@ -241,6 +241,9 @@ class _DriveScreenState extends State<DriveScreen> {
     if (isFirstUse) {
       return _buildFirstUseCard(context);
     } else if (mostRecentTrip != null) {
+      final insightsProvider = Provider.of<InsightsProvider>(context);
+      final recentTrips = insightsProvider.recentTrips.take(3).toList();
+      
       return SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,22 +251,25 @@ class _DriveScreenState extends State<DriveScreen> {
             const Padding(
               padding: EdgeInsets.only(bottom: 8),
               child: Text(
-                'Recent Trip',
+                'Recent Trips',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            RecentTripCard(
-              trip: mostRecentTrip,
-              onTap: () {
-                Navigator.of(context).pushNamed(
-                  InsightsRoutes.tripDetail,
-                  arguments: mostRecentTrip.id,
-                );
-              },
-            ),
+            ...recentTrips.map((trip) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: RecentTripCard(
+                trip: trip,
+                onTap: () {
+                  Navigator.of(context).pushNamed(
+                    InsightsRoutes.tripDetail,
+                    arguments: trip.id,
+                  );
+                },
+              ),
+            )).toList(),
             const SizedBox(height: 8),
             Center(
               child: Text(
