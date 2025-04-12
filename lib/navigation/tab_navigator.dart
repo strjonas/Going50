@@ -66,13 +66,14 @@ class _TabNavigatorState extends State<TabNavigator> {
       icon: Icons.person_outline,
       activeIcon: Icons.person,
     ),
-    _TabItem(
+    // only add this when in debug mode
+/*     _TabItem(
       index: 4,
       label: 'OBD Test',
       route: TabRoutes.obdTestTab,
       icon: Icons.directions_car,
       activeIcon: Icons.directions_car_filled,
-    ),
+    ), */
   ];
 
   @override
