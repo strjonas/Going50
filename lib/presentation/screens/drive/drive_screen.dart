@@ -241,43 +241,47 @@ class _DriveScreenState extends State<DriveScreen> {
     if (isFirstUse) {
       return _buildFirstUseCard(context);
     } else if (mostRecentTrip != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8),
-            child: Text(
-              'Recent Trip',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+      final insightsProvider = Provider.of<InsightsProvider>(context);
+      final recentTrips = insightsProvider.recentTrips.take(3).toList();
+      
+      return SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Recent Trips',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: RecentTripCard(
-              trip: mostRecentTrip,
-              onTap: () {
-                // TODO: Navigate to trip details
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Trip details not yet implemented'),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 8),
-          Center(
-            child: Text(
-              'Pull for more',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
+            ...recentTrips.map((trip) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: RecentTripCard(
+                trip: trip,
+                onTap: () {
+                  Navigator.of(context).pushNamed(
+                    InsightsRoutes.tripDetail,
+                    arguments: trip.id,
+                  );
+                },
+              ),
+            )).toList(),
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                'Pull for more',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       );
     } else {
       return const Center(

@@ -5,6 +5,7 @@ import '../presentation/screens/drive/drive_screen.dart';
 import '../presentation/screens/insights/insights_screen.dart';
 import '../presentation/screens/community/community_screen.dart';
 import '../presentation/screens/profile/profile_screen.dart';
+import '../presentation/screens/obd_test_page.dart';
 
 /// TabNavigator handles tab-based navigation for the application.
 /// 
@@ -32,6 +33,7 @@ class _TabNavigatorState extends State<TabNavigator> {
     const InsightsScreen(),
     const CommunityScreen(),
     const ProfileScreen(),
+    ObdTestPage(),
   ];
   
   // The tab configuration data
@@ -64,6 +66,14 @@ class _TabNavigatorState extends State<TabNavigator> {
       icon: Icons.person_outline,
       activeIcon: Icons.person,
     ),
+    // only add this when in debug mode
+/*     _TabItem(
+      index: 4,
+      label: 'OBD Test',
+      route: TabRoutes.obdTestTab,
+      icon: Icons.directions_car,
+      activeIcon: Icons.directions_car_filled,
+    ), */
   ];
 
   @override

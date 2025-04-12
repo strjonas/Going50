@@ -15,6 +15,8 @@ class TabRoutes {
   
   /// Route for the Profile tab
   static const String profileTab = '/profile';
+
+  static const String obdTestTab = '/obd-test';
   
   // Prevent instantiation
   TabRoutes._();
